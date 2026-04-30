@@ -1433,3 +1433,89 @@ button:active { opacity: 0.75; transform: scale(0.97); }
   width: auto;
   white-space: nowrap;
 }
+
+/* =========================
+   PITCHER ACTIVO BAR
+========================= */
+.pitcher-activo-bar {
+  display: flex;
+  align-items: stretch;
+  background: #f0ece3;
+  border-bottom: 1px solid var(--borde);
+}
+
+.pitcher-activo-equipo {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.pitcher-activo-sep {
+  width: 1px;
+  background: var(--borde);
+}
+
+.pitcher-activo-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--suave);
+  white-space: nowrap;
+}
+
+.pitcher-activo-nombre {
+  flex: 1;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--texto);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pitcher-activo-btn {
+  background: var(--acento2);
+  color: var(--crema);
+  font-size: 11px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  width: auto;
+  white-space: nowrap;
+}
+
+/* =========================
+   SUSTITUCIÓN
+========================= */
+.td-acciones {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 2px !important;
+}
+
+.game-table .td-acciones {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.btn-sustituir {
+  background: none;
+  border: none;
+  color: var(--acento3);
+  font-size: 14px;
+  padding: 2px 3px;
+  cursor: pointer;
+  width: auto;
+  opacity: 0.6;
+}
+
+.btn-sustituir:active { opacity: 1; }
+
+.game-table col.col-x { width: 52px; }

@@ -33,6 +33,135 @@ function guardarStorage() {
   localStorage.setItem("pitchers", JSON.stringify(pitchers));
 }
 
+// ============================================================
+// ESTADO DEL PARTIDO EN CURSO — persiste entre recargas
+// ============================================================
+function guardarEstadoPartido() {
+  // Serializar filas de bateadores (nombre + stats)
+  function leerFilas(tablaId) {
+    return [...document.querySelectorAll(`${tablaId} tbody tr`)].map(tr => ({
+      nombre: tr.children[0].textContent,
+      stats:  [...tr.querySelectorAll(".stat")].map(td => parseInt(td.textContent) || 0)
+    }));
+  }
+
+  // Serializar pitcher containers (manual, por si no hay tracking automático)
+  function leerPitContainers(equipo) {
+    const containerId = equipo === "visitante" ? "pitchersVsVisitanteContainer" : "pitchersVsLocalContainer";
+    return [...document.querySelectorAll(`#${containerId} .pitcher-fila`)].map(fila => ({
+      nombre: fila.querySelector(".pitcher-select")?.value || "",
+      outs:   parseInt(fila.querySelector(".pitcher-outs-input")?.value) || 0
+    })).filter(p => p.nombre);
+  }
+
+  const estado = {
+    local:      document.getElementById("local")?.value     || "",
+    visitante:  document.getElementById("visitante")?.value || "",
+    fecha:      document.getElementById("fecha")?.value     || "",
+    marcador, carrerasGrid, lineupPos,
+    bases: {
+      1: bases[1] ? { nombre: bases[1].nombre } : null,
+      2: bases[2] ? { nombre: bases[2].nombre } : null,
+      3: bases[3] ? { nombre: bases[3].nombre } : null,
+    },
+    pitcherActivo,
+    outsPitcher,
+    filasVisitante: leerFilas("#tablaVisitante"),
+    filasLocal:     leerFilas("#tablaLocal"),
+    pitContainerVisitante: leerPitContainers("visitante"),
+    pitContainerLocal:     leerPitContainers("local"),
+    jugadorActual: jugadorNombre || null,
+    tablaActual:   tablaActiva  || null,
+    juegoIniciado: document.getElementById("btnIniciarJuego")?.style.display === "none",
+  };
+
+  localStorage.setItem("estadoPartido", JSON.stringify(estado));
+}
+
+function restaurarEstadoPartido() {
+  const raw = localStorage.getItem("estadoPartido");
+  if (!raw) return;
+
+  let estado;
+  try { estado = JSON.parse(raw); } catch { return; }
+  if (!estado || !estado.juegoIniciado) return; // no había partido en curso
+
+  // Rellenar campos de texto
+  if (document.getElementById("local"))     document.getElementById("local").value     = estado.local     || "";
+  if (document.getElementById("visitante")) document.getElementById("visitante").value = estado.visitante || "";
+  if (document.getElementById("fecha"))     document.getElementById("fecha").value     = estado.fecha     || "";
+
+  // Restaurar marcador y grids
+  if (estado.marcador)     Object.assign(marcador, estado.marcador);
+  if (estado.carrerasGrid) Object.assign(carrerasGrid, estado.carrerasGrid);
+  if (estado.lineupPos)    Object.assign(lineupPos, estado.lineupPos);
+  if (estado.pitcherActivo) Object.assign(pitcherActivo, estado.pitcherActivo);
+  if (estado.outsPitcher)   Object.assign(outsPitcher, estado.outsPitcher);
+
+  // Restaurar bateadores
+  function restaurarFilas(tablaId, filas) {
+    const tbody = document.querySelector(`${tablaId} tbody`);
+    if (!tbody || !filas) return;
+    tbody.innerHTML = "";
+    filas.forEach(({ nombre, stats }) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${nombre}</td>` +
+        stats.map(v => `<td class="stat">${v}</td>`).join("") +
+        `<td class="td-acciones"><button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button><button onclick="this.closest('tr').remove()">✕</button></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  restaurarFilas("#tablaVisitante", estado.filasVisitante);
+  restaurarFilas("#tablaLocal",     estado.filasLocal);
+
+  // Restaurar bases con referencias a filas reales
+  [1, 2, 3].forEach(n => {
+    const b = estado.bases?.[n];
+    if (!b) { bases[n] = null; return; }
+    // Buscar la fila del corredor en las tablas restauradas
+    const fila = [...document.querySelectorAll("#tablaVisitante tbody tr, #tablaLocal tbody tr")]
+      .find(tr => tr.children[0].textContent === b.nombre);
+    bases[n] = fila ? { nombre: b.nombre, fila } : null;
+  });
+
+  // Restaurar pitcher containers manuales
+  function restaurarPitContainers(equipo, pitchers) {
+    const containerId = equipo === "visitante" ? "pitchersVsVisitanteContainer" : "pitchersVsLocalContainer";
+    const container = document.getElementById(containerId);
+    if (!container || !pitchers) return;
+    container.innerHTML = "";
+    pitchers.forEach(({ nombre, outs }) => {
+      agregarFilaPitcherConValor(equipo, nombre, outs);
+    });
+  }
+  restaurarPitContainers("visitante", estado.pitContainerVisitante);
+  restaurarPitContainers("local",     estado.pitContainerLocal);
+
+  // Restaurar bateador seleccionado
+  if (estado.jugadorActual && estado.tablaActual) {
+    const fila = [...document.querySelectorAll(`${estado.tablaActual} tbody tr`)]
+      .find(tr => tr.children[0].textContent === estado.jugadorActual);
+    if (fila) seleccionarFila(fila, estado.tablaActual);
+  }
+
+  // Mostrar/ocultar botones
+  document.getElementById("btnIniciarJuego").style.display = "none";
+  document.getElementById("btnGuardar").style.display = "block";
+
+  // Actualizar UI
+  cargarSelects();
+  actualizarMarcadorUI();
+  actualizarBasesUI();
+  actualizarPitcherActivoUI();
+
+  toast("🔄 Partido restaurado", 3000);
+}
+
+function limpiarEstadoPartido() {
+  localStorage.removeItem("estadoPartido");
+}
+
 function ipDisplay(outs) {
   return `${Math.floor(outs/3)}.${outs%3}`;
 }
@@ -156,7 +285,10 @@ function agregarJugadorDesdeLista(equipo) {
   tr.innerHTML = `
     <td>${nombre}</td>
     ${Array(9).fill('<td class="stat">0</td>').join("")}
-    <td><button onclick="this.closest('tr').remove()">✕</button></td>
+    <td class="td-acciones">
+      <button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button>
+      <button onclick="this.closest('tr').remove()">✕</button>
+    </td>
   `;
   tbody.appendChild(tr);
   select.value = "";
@@ -269,7 +401,8 @@ function actualizarMarcadorUI() {
   if (sbNV) sbNV.textContent = nomV;
   if (sbNL) sbNL.textContent = nomL;
 
-  // Rellenar celdas del grid
+  // Pitcher activo
+  actualizarPitcherActivoUI();
   let totalV = 0, totalL = 0;
   for (let i = 1; i <= 7; i++) {
     const cv = carrerasGrid.visitante[i];
@@ -306,6 +439,10 @@ function cambiarInning(delta) {
 
 function cambiarOuts(delta) {
   marcador.outs = Math.min(3, Math.max(0, marcador.outs + delta));
+
+  // Acumular outs al pitcher activo (solo cuando se suman outs)
+  if (delta > 0) sumarOutsPitcherActivo(delta);
+
   actualizarMarcadorUI();
 
   if (marcador.outs === 3) {
@@ -365,6 +502,94 @@ function cambiarEquipoBateador(turno) {
     ? `⚾ 3 outs — Turno LOCAL · Al bate: ${nombre}`
     : `⚾ 3 outs — Entrada ${marcador.inning} · Al bate: ${nombre}`;
   toast(msg, 3000);
+}
+
+// ============================================================
+// PITCHER ACTIVO — cada equipo tiene el suyo independiente
+// pitcherActivo[equipo] = { nombre } | null
+// outsPitcher[equipo][nombre] = outs acumulados en este partido
+// Los outs se acumulan al pitcher del equipo CONTRARIO al que batea
+// (el pitcher del local enfrenta al visitante y viceversa)
+// ============================================================
+let pitcherActivo = { visitante: null, local: null };
+let outsPitcher   = { visitante: {}, local: {} };
+let _equipoSelectorPitcher = null; // equipo cuyo pitcher se está cambiando
+
+function equipoPitcherActivo() {
+  // Devuelve el equipo del pitcher que AHORA lanza (opuesto al que batea)
+  return marcador.turno === "visitante" ? "local" : "visitante";
+}
+
+function actualizarPitcherActivoUI() {
+  const elL = document.getElementById("pitcherNombreLocal");
+  const elV = document.getElementById("pitcherNombreVisitante");
+  if (elL) elL.textContent = pitcherActivo.local?.nombre    || "—";
+  if (elV) elV.textContent = pitcherActivo.visitante?.nombre || "—";
+}
+
+function abrirSelectorPitcherActivo() {
+  // Abrir selector para el pitcher que está lanzando AHORA
+  _equipoSelectorPitcher = equipoPitcherActivo();
+  const turno = _equipoSelectorPitcher === "local" ? "LOCAL (lanza vs VIS)" : "VISITANTE (lanza vs LOC)";
+  document.getElementById("modalPitcherEquipo").textContent = turno;
+  _renderListaPitcher();
+  document.getElementById("modalPitcherActivo").style.display = "flex";
+}
+
+function abrirSelectorPitcherEquipo(equipo) {
+  _equipoSelectorPitcher = equipo;
+  const turno = equipo === "local" ? "LOCAL (lanza vs VIS)" : "VISITANTE (lanza vs LOC)";
+  document.getElementById("modalPitcherEquipo").textContent = turno;
+  _renderListaPitcher();
+  document.getElementById("modalPitcherActivo").style.display = "flex";
+}
+
+function _renderListaPitcher() {
+  const lista = document.getElementById("modalPitcherLista");
+  lista.innerHTML = "";
+
+  // vs VIS → pitcher del LOCAL | vs LOC → pitcher del VISITANTE
+  const tablaId = _equipoSelectorPitcher === "local"
+    ? "#tablaLocal tbody tr"
+    : "#tablaVisitante tbody tr";
+
+  const filas = [...document.querySelectorAll(tablaId)];
+
+  if (!filas.length) {
+    const equipo = _equipoSelectorPitcher === "local" ? "local" : "visitante";
+    lista.innerHTML = `<p style='color:#aaa;font-size:13px;padding:8px'>Agrega jugadores al equipo ${equipo} primero</p>`;
+    return;
+  }
+
+  filas.forEach(fila => {
+    const nombre = fila.children[0].textContent;
+    const btn = document.createElement("button");
+    btn.className = "modal-jugador-btn";
+    const outs = outsPitcher[_equipoSelectorPitcher]?.[nombre] || 0;
+    btn.textContent = nombre + (outs > 0 ? ` · ${ipDisplay(outs)} IP` : "");
+    if (pitcherActivo[_equipoSelectorPitcher]?.nombre === nombre) btn.classList.add("modal-jugador-btn-activo");
+    btn.onclick = () => {
+      pitcherActivo[_equipoSelectorPitcher] = { nombre };
+      actualizarPitcherActivoUI();
+      document.getElementById("modalPitcherActivo").style.display = "none";
+      toast(`🥎 Pitcher ${_equipoSelectorPitcher === "local" ? "LOCAL" : "VIS"}: ${nombre}`);
+      guardarEstadoPartido();
+    };
+    lista.appendChild(btn);
+  });
+}
+
+function cerrarSelectorPitcherActivo() {
+  document.getElementById("modalPitcherActivo").style.display = "none";
+}
+
+// Suma outs al pitcher del equipo contrario al que batea
+function sumarOutsPitcherActivo(cantidad) {
+  const equipo = equipoPitcherActivo();
+  const pitcher = pitcherActivo[equipo];
+  if (!pitcher) return;
+  if (!outsPitcher[equipo][pitcher.nombre]) outsPitcher[equipo][pitcher.nombre] = 0;
+  outsPitcher[equipo][pitcher.nombre] += cantidad;
 }
 
 function toggleTurno() {
@@ -495,9 +720,11 @@ function abrirModalJugada(tipoJugada) {
   _mj.basesPropoestas = basesNuevas;
   _mj.anotadores      = anotaron;
 
-  // CI sugeridas
+  // CI sugeridas:
+  // HR → CI = todos los que anotan (corredores + el bateador mismo)
+  // Otros → CI = solo corredores que anotaron (no el bateador)
   _mj.ci = tipoJugada === 3
-    ? Math.max(0, anotaron.length - 1)  // HR: CI = corredores sin el bateador mismo
+    ? anotaron.length              // HR: todos los que anotan = CI del bateador
     : anotaron.filter(a => a.nombre !== jugadorNombre).length;
 
   renderModalJugada();
@@ -653,6 +880,7 @@ function confirmarJugada() {
 
   document.getElementById("modalJugada").style.display = "none";
   setTimeout(siguienteBateador, 150);
+  guardarEstadoPartido();
 }
 
 function registrarCarreraEnMarcador(delta) {
@@ -683,6 +911,8 @@ function resetMarcador() {
   marcador = { inning: 1, outs: 0, turno: "visitante" };
   bases = { 1: null, 2: null, 3: null };
   lineupPos = { visitante: 0, local: 0 };
+  pitcherActivo = { visitante: null, local: null };
+  outsPitcher   = { visitante: {}, local: {} };
   actualizarBasesUI();
   carrerasGrid = {
     visitante: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
@@ -724,8 +954,8 @@ function registrar(i) {
 
   if (i === 5 || i === 6) {
     cambiarOuts(delta);
-    // K y O no tienen CA/CI — avanzar directo sin modal
     if (!modoEdicion) setTimeout(siguienteBateador, 250);
+    setTimeout(guardarEstadoPartido, 900); // guardar después del cambio de turno si aplica
     return;
   }
 
@@ -733,6 +963,89 @@ function registrar(i) {
 
   // Abrir modal completo de jugada para hits y BB
   if (!modoEdicion) setTimeout(() => abrirModalJugada(i), 200);
+  else guardarEstadoPartido(); // en modo restar guardar inmediato
+}
+
+// ============================================================
+// SUSTITUCIÓN DE JUGADOR
+// ============================================================
+let _sustituirFila = null;
+
+function abrirModalSustituir(btn) {
+  _sustituirFila = btn.closest("tr");
+  const nombreSale = _sustituirFila.children[0].textContent;
+  document.getElementById("sustituirSale").textContent = nombreSale;
+
+  // Determinar en qué tabla está
+  const enVisitante = _sustituirFila.closest("#tablaVisitante");
+  const tablaId = enVisitante ? "#tablaVisitante" : "#tablaLocal";
+  const selectId = enVisitante ? "selectVisitante" : "selectLocal";
+
+  // Jugadores del mismo equipo ya en el partido (para excluir)
+  const yaEnPartido = [...document.querySelectorAll(`${tablaId} tbody tr`)]
+    .map(tr => tr.children[0].textContent);
+
+  // Opciones: todos los jugadores del equipo en el select, que no estén ya en la tabla
+  const select = document.getElementById(selectId);
+  const opciones = [...select.options]
+    .map(o => o.value)
+    .filter(v => v && !yaEnPartido.includes(v));
+
+  const lista = document.getElementById("sustituirLista");
+  lista.innerHTML = "";
+
+  if (!opciones.length) {
+    lista.innerHTML = "<p style='color:#aaa;font-size:13px;padding:8px'>No hay jugadores disponibles para sustituir</p>";
+  } else {
+    opciones.forEach(nombre => {
+      const btn = document.createElement("button");
+      btn.className = "modal-jugador-btn";
+      btn.textContent = nombre;
+      btn.onclick = () => aplicarSustitucion(nombre);
+      lista.appendChild(btn);
+    });
+  }
+
+  document.getElementById("modalSustituir").style.display = "flex";
+}
+
+function aplicarSustitucion(nombreEntra) {
+  if (!_sustituirFila) return;
+
+  const nombreSale = _sustituirFila.children[0].textContent;
+
+  // Guardar stats del jugador que sale (ya acumuladas en la celda)
+  const stats = [..._sustituirFila.querySelectorAll(".stat")]
+    .map(td => parseInt(td.textContent) || 0);
+
+  // Cambiar nombre en la fila — conservar stats acumuladas
+  _sustituirFila.children[0].textContent = nombreEntra;
+
+  // Si el jugador que sale estaba seleccionado, actualizar referencia
+  if (jugadorNombre === nombreSale) {
+    jugadorNombre = nombreEntra;
+    const jA = document.getElementById("jugadorActivo");
+    jA.textContent = `🏏 Al bate: ${nombreEntra}`;
+  }
+
+  // Si estaba en una base, actualizar el nombre del corredor
+  [1, 2, 3].forEach(n => {
+    if (bases[n]?.nombre === nombreSale) {
+      bases[n].nombre = nombreEntra;
+      bases[n].fila   = _sustituirFila;
+    }
+  });
+  actualizarBasesUI();
+
+  document.getElementById("modalSustituir").style.display = "none";
+  _sustituirFila = null;
+  guardarEstadoPartido();
+  toast(`✅ ${nombreSale} → ${nombreEntra}`);
+}
+
+function cerrarModalSustituir() {
+  document.getElementById("modalSustituir").style.display = "none";
+  _sustituirFila = null;
 }
 
 // ============================================================
@@ -967,24 +1280,21 @@ function guardarPartido() {
   if (!bateadoresVisit.length && !bateadoresLocal.length)
     return toast("⚠️ No hay jugadores en el partido");
 
-  const pitVsVisit = leerPitchersContainer("visitante");
-  const pitVsLocal = leerPitchersContainer("local");
+  // Construir pitVsVisit y pitVsLocal desde el tracking automático de outs
+  // outsPitcher[equipo][nombre] = outs acumulados en el partido
+  // El pitcher del equipo local enfrenta al visitante (pitVsVisit) y viceversa
+  const pitVsVisit = Object.entries(outsPitcher.local).map(([nombre, outs]) => ({ nombre, outs }));
+  const pitVsLocal = Object.entries(outsPitcher.visitante).map(([nombre, outs]) => ({ nombre, outs }));
 
-  // Validar outs por equipo (máx 21 = 7 entradas)
-  const outsVisit = pitVsVisit.reduce((s,p) => s + p.outs, 0);
-  const outsLocal  = pitVsLocal.reduce((s,p)  => s + p.outs, 0);
-  if (pitVsVisit.length && outsVisit > MAX_OUTS)
-    return toast(`⚠️ Pitchers vs Visitante: ${outsVisit} outs superan el máximo (${MAX_OUTS})`);
-  if (pitVsLocal.length && outsLocal > MAX_OUTS)
-    return toast(`⚠️ Pitchers vs Local: ${outsLocal} outs superan el máximo (${MAX_OUTS})`);
+  // Si no hubo tracking automático, intentar leer los contenedores manuales como fallback
+  const pitVsVisitFinal = pitVsVisit.length ? pitVsVisit : leerPitchersContainer("visitante");
+  const pitVsLocalFinal = pitVsLocal.length ? pitVsLocal : leerPitchersContainer("local");
 
   // Si estamos editando: revertir stats previas del partido
   if (editandoIdx >= 0) {
     const previo = partidos[editandoIdx];
     const prevPartidoStr = `${previo.local} vs ${previo.visitante}`;
-    // restar bateo previo
     restarStatsJugadorPartido(previo.jugadores, previo.fecha);
-    // restar pitcheo previo
     if (previo.pitVsVisit) restarStatsPitcherPartido(previo.pitVsVisit, previo.fecha, prevPartidoStr);
     if (previo.pitVsLocal) restarStatsPitcherPartido(previo.pitVsLocal, previo.fecha, prevPartidoStr);
   }
@@ -998,8 +1308,8 @@ function guardarPartido() {
   });
 
   // Acumular pitcheo
-  distribuirStatsPitcheo(bateadoresVisit, pitVsVisit, fecha, partidoStr);
-  distribuirStatsPitcheo(bateadoresLocal, pitVsLocal, fecha, partidoStr);
+  distribuirStatsPitcheo(bateadoresVisit, pitVsVisitFinal, fecha, partidoStr);
+  distribuirStatsPitcheo(bateadoresLocal, pitVsLocalFinal, fecha, partidoStr);
 
   // Construir objeto partido
   const partido = {
@@ -1007,7 +1317,7 @@ function guardarPartido() {
     jugadores: todosJugadores,
     jugVisitante: bateadoresVisit,
     jugLocal: bateadoresLocal,
-    pitVsVisit, pitVsLocal
+    pitVsVisit: pitVsVisitFinal, pitVsLocal: pitVsLocalFinal
   };
 
   if (editandoIdx >= 0) {
@@ -1019,6 +1329,7 @@ function guardarPartido() {
   }
 
   guardarStorage();
+  limpiarEstadoPartido(); // ya no hay partido en curso
   resetJuego();
   cargarSelects();
 }
@@ -1057,7 +1368,7 @@ function editarPartido(idx) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${nombre}</td>` +
       stats.map(v => `<td class="stat">${v}</td>`).join("") +
-      `<td><button onclick="this.closest('tr').remove()">✕</button></td>`;
+      `<td class="td-acciones"><button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button><button onclick="this.closest('tr').remove()">✕</button></td>`;
     document.querySelector("#tablaVisitante tbody").appendChild(tr);
   });
 
@@ -1066,7 +1377,7 @@ function editarPartido(idx) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${nombre}</td>` +
       stats.map(v => `<td class="stat">${v}</td>`).join("") +
-      `<td><button onclick="this.closest('tr').remove()">✕</button></td>`;
+      `<td class="td-acciones"><button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button><button onclick="this.closest('tr').remove()">✕</button></td>`;
     document.querySelector("#tablaLocal tbody").appendChild(tr);
   });
 
@@ -1444,3 +1755,6 @@ cargarSelects();
 actualizarMarcadorUI();
 actualizarBasesUI();
 document.getElementById("visitante").addEventListener("input", actualizarMarcadorUI);
+
+// Restaurar partido en curso si había uno al recargar
+restaurarEstadoPartido();

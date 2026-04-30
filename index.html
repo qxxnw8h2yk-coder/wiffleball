@@ -106,6 +106,21 @@
       </div>
     </div>
 
+    <!-- PITCHER ACTIVO -->
+    <div class="pitcher-activo-bar">
+      <div class="pitcher-activo-equipo">
+        <span class="pitcher-activo-label">🥎 vs VIS</span>
+        <span class="pitcher-activo-nombre" id="pitcherNombreLocal">—</span>
+        <button class="pitcher-activo-btn" onclick="abrirSelectorPitcherEquipo('local')">Cambiar</button>
+      </div>
+      <div class="pitcher-activo-sep"></div>
+      <div class="pitcher-activo-equipo">
+        <span class="pitcher-activo-label">🥎 vs LOC</span>
+        <span class="pitcher-activo-nombre" id="pitcherNombreVisitante">—</span>
+        <button class="pitcher-activo-btn" onclick="abrirSelectorPitcherEquipo('visitante')">Cambiar</button>
+      </div>
+    </div>
+
     <!-- Tabla de entradas estilo béisbol -->
     <div class="scoreboard-scroll">
       <table class="scoreboard">
@@ -156,11 +171,6 @@
 
   <!-- VISITANTE -->
   <div class="equipo-header visitante-color">🛫 Visitante</div>
-  <div id="pitchersVsVisitanteContainer" class="pitchers-container">
-    <!-- pitchers dinámicos -->
-  </div>
-  <button class="btn-add-pitcher" onclick="agregarFilaPitcher('visitante')">+ Agregar pitcher vs Visitante <span class="pit-hint">(máx 21 outs = 7 entradas)</span></button>
-
   <div class="selectorJugador">
     <select id="selectVisitante"><option value="">+ Agregar jugador visitante</option></select>
     <button class="btn-agregar" onclick="agregarJugadorDesdeLista('visitante')">Agregar</button>
@@ -184,11 +194,6 @@
 
   <!-- LOCAL -->
   <div class="equipo-header local-color">🏠 Local</div>
-  <div id="pitchersVsLocalContainer" class="pitchers-container">
-    <!-- pitchers dinámicos -->
-  </div>
-  <button class="btn-add-pitcher" onclick="agregarFilaPitcher('local')">+ Agregar pitcher vs Local <span class="pit-hint">(máx 21 outs = 7 entradas)</span></button>
-
   <div class="selectorJugador">
     <select id="selectLocal"><option value="">+ Agregar jugador local</option></select>
     <button class="btn-agregar" onclick="agregarJugadorDesdeLista('local')">Agregar</button>
@@ -288,6 +293,26 @@
     <p>1. Presiona <strong>Exportar JSON</strong> para descargar el respaldo.</p>
     <p>2. En Safari, usa el ícono de compartir → <strong>Guardar en Archivos</strong> → iCloud Drive o Dropbox.</p>
     <p>3. Para restaurar, presiona <strong>Importar respaldo</strong> y selecciona el archivo.</p>
+  </div>
+</div>
+
+<!-- MODAL SUSTITUCIÓN -->
+<div id="modalSustituir" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-titulo">⇄ Sustitución</div>
+    <p style="font-size:12px;color:var(--suave);margin:4px 0 12px">Reemplazar a <strong id="sustituirSale"></strong> por:</p>
+    <div class="modal-base-lista" id="sustituirLista"></div>
+    <button class="modal-btn-cerrar" style="margin-top:8px" onclick="cerrarModalSustituir()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL PITCHER ACTIVO -->
+<div id="modalPitcherActivo" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-titulo">🥎 Pitcher en turno</div>
+    <p style="font-size:12px;color:var(--suave);margin:4px 0 12px">Enfrenta al equipo <span id="modalPitcherEquipo"></span></p>
+    <div class="modal-base-lista" id="modalPitcherLista"></div>
+    <button class="modal-btn-cerrar" style="margin-top:8px" onclick="cerrarSelectorPitcherActivo()">Cancelar</button>
   </div>
 </div>
 
