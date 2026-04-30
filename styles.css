@@ -94,22 +94,49 @@ body {
    SELECTOR JUGADOR ACTIVO
 ========================= */
 .selector {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 13px;
-  letter-spacing: 0.5px;
-  padding: 9px 16px;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  padding: 7px 12px;
   background: var(--blanco);
   border-bottom: 1px solid var(--borde);
   font-weight: 600;
   color: var(--suave);
   transition: all 0.2s;
+  min-height: 36px;
 }
 
 .selector.activo-global {
   background: #f0ece3;
-  color: var(--acento2);
   border-bottom-color: var(--acento2);
+}
+
+.ev-nombre {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--acento2);
+  margin-right: 4px;
+}
+
+.ev-stat {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  color: var(--suave);
+  background: var(--arena);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.ev-stat strong {
+  color: var(--acento3);
+  font-weight: 700;
 }
 
 /* =========================
@@ -1519,3 +1546,34 @@ button:active { opacity: 0.75; transform: scale(0.97); }
 .btn-sustituir:active { opacity: 1; }
 
 .game-table col.col-x { width: 52px; }
+
+/* =========================
+   AVE / OPS EN TABLA JUEGO
+========================= */
+.game-table col.col-av { width: 42px; }
+
+.th-av {
+  background: var(--acento2) !important;
+  color: var(--crema) !important;
+  font-size: 10px !important;
+}
+
+.stat-av {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--acento3);
+  text-align: center;
+  border-bottom: 1px solid #edeae4;
+  padding: 0 2px;
+}
+
+.game-table tbody tr {
+  grid-template-columns: 90px repeat(9, 1fr) 42px 42px 52px;
+}
+
+@media (min-width: 600px) {
+  .game-table tbody tr {
+    grid-template-columns: 120px repeat(9, 1fr) 46px 46px 52px;
+  }
+}

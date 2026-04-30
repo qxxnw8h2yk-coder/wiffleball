@@ -107,6 +107,8 @@ function restaurarEstadoPartido() {
       const tr = document.createElement("tr");
       tr.innerHTML = `<td>${nombre}</td>` +
         stats.map(v => `<td class="stat">${v}</td>`).join("") +
+        `<td class="stat-av td-ave">.000</td>` +
+        `<td class="stat-av td-ops">.000</td>` +
         `<td class="td-acciones"><button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button><button onclick="this.closest('tr').remove()">✕</button></td>`;
       tbody.appendChild(tr);
     });
@@ -285,6 +287,8 @@ function agregarJugadorDesdeLista(equipo) {
   tr.innerHTML = `
     <td>${nombre}</td>
     ${Array(9).fill('<td class="stat">0</td>').join("")}
+    <td class="stat-av td-ave">.000</td>
+    <td class="stat-av td-ops">.000</td>
     <td class="td-acciones">
       <button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button>
       <button onclick="this.closest('tr').remove()">✕</button>
@@ -307,11 +311,62 @@ function seleccionarFila(fila, tablaId) {
   jugadorNombre       = fila.children[0].textContent;
   jugadorSeleccionado = fila;
   tablaActiva         = tablaId;
-  const jA = document.getElementById("jugadorActivo");
-  jA.textContent = "🏏 Al bate: " + jugadorNombre;
-  jA.classList.add("activo-global");
-  // Scroll suave a la fila en móvil
+  actualizarStatsEnVivo();
   fila.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function actualizarStatsEnVivo() {
+  const jA = document.getElementById("jugadorActivo");
+  if (!jugadorSeleccionado) {
+    jA.textContent = "👆 Ningún jugador seleccionado";
+    jA.classList.remove("activo-global");
+    refreshStatsTablas();
+    return;
+  }
+
+  const celdas = jugadorSeleccionado.querySelectorAll(".stat");
+  const s = [...celdas].map(td => parseInt(td.textContent) || 0);
+  const H  = s[0]+s[1]+s[2]+s[3];
+  const AB = H + s[5] + s[6];
+  const BB = s[4];
+  const TB = s[0] + 2*s[1] + 3*s[2] + 4*s[3];
+  const AVE = AB ? (H/AB).toFixed(3) : ".000";
+  const OBP = (AB+BB) ? ((H+BB)/(AB+BB)).toFixed(3) : ".000";
+  const SLG = AB ? (TB/AB).toFixed(3) : ".000";
+  const OPS = (AB+BB) ? ((H+BB)/(AB+BB) + TB/AB).toFixed(3) : ".000";
+
+  jA.innerHTML = `
+    <span class="ev-nombre">🏏 ${jugadorNombre}</span>
+    <span class="ev-stat">AVE <strong>${AVE}</strong></span>
+    <span class="ev-stat">OBP <strong>${OBP}</strong></span>
+    <span class="ev-stat">SLG <strong>${SLG}</strong></span>
+    <span class="ev-stat">OPS <strong>${OPS}</strong></span>
+    <span class="ev-stat">CA <strong>${s[7]}</strong></span>
+    <span class="ev-stat">CI <strong>${s[8]}</strong></span>
+  `;
+  jA.classList.add("activo-global");
+  refreshStatsTablas();
+}
+
+// Recalcula AVE y OPS en cada fila de las tablas del partido
+function refreshStatsTablas() {
+  ["#tablaVisitante","#tablaLocal"].forEach(tablaId => {
+    document.querySelectorAll(`${tablaId} tbody tr`).forEach(tr => {
+      const celdas = tr.querySelectorAll(".stat");
+      if (!celdas.length) return;
+      const s = [...celdas].map(td => parseInt(td.textContent) || 0);
+      const H  = s[0]+s[1]+s[2]+s[3];
+      const AB = H + s[5] + s[6];
+      const BB = s[4];
+      const TB = s[0] + 2*s[1] + 3*s[2] + 4*s[3];
+      const AVE = AB ? (H/AB).toFixed(3) : ".000";
+      const OPS = (AB+BB) ? ((H+BB)/(AB+BB) + TB/AB).toFixed(3) : ".000";
+      const tdAve = tr.querySelector(".td-ave");
+      const tdOps = tr.querySelector(".td-ops");
+      if (tdAve) tdAve.textContent = AVE;
+      if (tdOps) tdOps.textContent = OPS;
+    });
+  });
 }
 
 // Posición del lineup por equipo — índice del SIGUIENTE bateador tras el último out
@@ -439,33 +494,45 @@ function cambiarInning(delta) {
 
 function cambiarOuts(delta) {
   marcador.outs = Math.min(3, Math.max(0, marcador.outs + delta));
-
-  // Acumular outs al pitcher activo (solo cuando se suman outs)
   if (delta > 0) sumarOutsPitcherActivo(delta);
-
   actualizarMarcadorUI();
 
   if (marcador.outs === 3) {
-    // Guardar la posición del SIGUIENTE bateador del equipo que termina
-    // (el que viene después del último out)
     const equipoSale = marcador.turno;
     const tablaIdSale = equipoSale === "visitante" ? "#tablaVisitante" : "#tablaLocal";
     const filasSale = [...document.querySelectorAll(`${tablaIdSale} tbody tr`)];
     if (filasSale.length && jugadorSeleccionado) {
       const idxActual = filasSale.indexOf(jugadorSeleccionado);
-      if (idxActual >= 0) {
-        // El próximo turno de este equipo empieza desde el SIGUIENTE al que hizo el out
-        lineupPos[equipoSale] = (idxActual + 1) % filasSale.length;
-      }
+      if (idxActual >= 0) lineupPos[equipoSale] = (idxActual + 1) % filasSale.length;
     }
+
+    // Guardar el jugador que hizo el último out (para regla chiller)
+    marcador.ultimoOut = { nombre: jugadorNombre, tablaId: tablaActiva };
 
     setTimeout(() => {
       marcador.outs = 0;
       bases = { 1: null, 2: null, 3: null };
 
-      if (marcador.turno === "visitante") {
+      const eraTurnoLocal = marcador.turno === "local";
+
+      if (!eraTurnoLocal) {
+        // Terminó la media entrada del visitante → turno del local
         marcador.turno = "local";
       } else {
+        // Terminó la entrada completa → verificar reglas de término
+        const accion = verificarTerminoEntrada();
+        if (accion === "fin") return; // partido terminado
+        if (accion === "derby") return; // derby de HR iniciado
+        if (accion === "chiller") {
+          // Iniciar inning extra con regla chiller
+          marcador.inning = Math.min(7, marcador.inning + 1);
+          marcador.turno  = "visitante";
+          activarReglaChiller();
+          actualizarMarcadorUI();
+          actualizarBasesUI();
+          cambiarEquipoBateador(marcador.turno);
+          return;
+        }
         marcador.inning = Math.min(7, marcador.inning + 1);
         marcador.turno  = "visitante";
       }
@@ -473,8 +540,199 @@ function cambiarOuts(delta) {
       actualizarMarcadorUI();
       actualizarBasesUI();
       cambiarEquipoBateador(marcador.turno);
-
     }, 800);
+  }
+}
+
+// ============================================================
+// REGLAS DE TÉRMINO DEL PARTIDO
+// ============================================================
+// Fase: "normal" | "extra" | "derby"
+let fasePartido = "normal";
+let derbyState  = null; // estado del derby de HR
+
+function totalesCarreras() {
+  const cV = Object.values(carrerasGrid.visitante).reduce((s,v) => s+v, 0);
+  const cL = Object.values(carrerasGrid.local).reduce((s,v) => s+v, 0);
+  return { cV, cL };
+}
+
+function verificarTerminoEntrada() {
+  const { cV, cL } = totalesCarreras();
+  const inn = marcador.inning;
+
+  if (inn === 5 && fasePartido === "normal") {
+    if (cV !== cL) {
+      // Hay ganador al 5° inning → terminar
+      mostrarGanador(cV > cL ? "VISITANTE" : "LOCAL", cV, cL, "5° inning");
+      return "fin";
+    } else {
+      // Empate → 2 innings extras con regla chiller
+      fasePartido = "extra";
+      toast("⚾ Empate al 5° inning — 2 innings extras con regla chiller", 4000);
+      return "chiller";
+    }
+  }
+
+  if (inn === 7 && fasePartido === "extra") {
+    if (cV !== cL) {
+      mostrarGanador(cV > cL ? "VISITANTE" : "LOCAL", cV, cL, "innings extras");
+      return "fin";
+    } else {
+      // Sigue empatado → derby de HR
+      fasePartido = "derby";
+      setTimeout(() => iniciarDerby(), 600);
+      return "derby";
+    }
+  }
+
+  return "continuar";
+}
+
+function mostrarGanador(equipo, cV, cL, momento) {
+  const modal = document.getElementById("modalFinPartido");
+  document.getElementById("finGanador").textContent  = `🏆 ${equipo}`;
+  document.getElementById("finMarcador").textContent = `${cV} — ${cL}`;
+  document.getElementById("finMomento").textContent  = `Partido terminado en el ${momento}`;
+  if (modal) modal.style.display = "flex";
+}
+
+function cerrarFinPartido(guardar) {
+  document.getElementById("modalFinPartido").style.display = "none";
+  if (guardar) {
+    guardarPartido(); // guarda stats y hace reset completo automáticamente
+  } else {
+    limpiarEstadoPartido();
+    resetJuego();
+    cargarSelects();
+    toast("🗑 Partido descartado — listo para nuevo partido");
+  }
+}
+
+// ============================================================
+// REGLA CHILLER — último out pasa a 2B al inicio del inning
+// ============================================================
+function activarReglaChiller() {
+  if (!marcador.ultimoOut?.nombre) return;
+  const { nombre, tablaId } = marcador.ultimoOut;
+  const fila = [...document.querySelectorAll(`${tablaId} tbody tr`)]
+    .find(tr => tr.children[0].textContent === nombre);
+  if (!fila) return;
+
+  // Poner al jugador en 2B
+  bases[2] = { nombre, fila };
+  actualizarBasesUI();
+  toast(`⚾ Regla chiller: ${nombre} inicia en 2B`, 3500);
+}
+
+// ============================================================
+// DERBY DE HOME RUNS
+// 3 bateadores por equipo, 3 swings c/u → más HR total gana
+// ============================================================
+function iniciarDerby() {
+  derbyState = {
+    ronda:        1,
+    turno:        "visitante",  // visitante batea primero
+    bateadorIdx:  0,            // 0,1,2 (3 bateadores)
+    swingsRestantes: 3,
+    hrVisitante:  0,
+    hrLocal:      0,
+    rondaHRVisit: 0,
+    rondaHRLocal: 0,
+    bateadoresVisit: [],        // se llenarán al abrir
+    bateadoresLocal: [],
+  };
+
+  // Cargar nombres de bateadores desde las tablas
+  derbyState.bateadoresVisit = [...document.querySelectorAll("#tablaVisitante tbody tr")]
+    .slice(0, 3).map(tr => tr.children[0].textContent);
+  derbyState.bateadoresLocal = [...document.querySelectorAll("#tablaLocal tbody tr")]
+    .slice(0, 3).map(tr => tr.children[0].textContent);
+
+  document.getElementById("modalDerby").style.display = "flex";
+  actualizarDerbyUI();
+}
+
+function bateadorActualDerby() {
+  const lista = derbyState.turno === "visitante"
+    ? derbyState.bateadoresVisit
+    : derbyState.bateadoresLocal;
+  return lista[derbyState.bateadorIdx] || `Bateador ${derbyState.bateadorIdx + 1}`;
+}
+
+function actualizarDerbyUI() {
+  if (!derbyState) return;
+  const totalBateadores = 3;
+  const bateadorNum = derbyState.bateadorIdx + 1;
+  const equipoLabel = derbyState.turno === "visitante" ? "🛫 VISITANTE" : "🏠 LOCAL";
+  const nombre = bateadorActualDerby();
+
+  document.getElementById("derbyRonda").textContent    = `Ronda ${derbyState.ronda}`;
+  document.getElementById("derbyTurno").textContent    = `${equipoLabel} — Bateador ${bateadorNum}/${totalBateadores}`;
+  document.getElementById("derbyBateador").textContent = nombre;
+  document.getElementById("derbySwings").textContent   = `Swings restantes: ${derbyState.swingsRestantes}`;
+  document.getElementById("derbyHRVis").textContent    = derbyState.rondaHRVisit;
+  document.getElementById("derbyHRLoc").textContent    = derbyState.rondaHRLocal;
+  document.getElementById("derbyTotalVis").textContent = derbyState.hrVisitante;
+  document.getElementById("derbyTotalLoc").textContent = derbyState.hrLocal;
+}
+
+function derbyHR() {
+  if (!derbyState) return;
+  if (derbyState.turno === "visitante") {
+    derbyState.rondaHRVisit++;
+    derbyState.hrVisitante++;
+  } else {
+    derbyState.rondaHRLocal++;
+    derbyState.hrLocal++;
+  }
+  derbyState.swingsRestantes--;
+  if (derbyState.swingsRestantes <= 0) derbySiguienteBateador();
+  else actualizarDerbyUI();
+}
+
+function derbyOut() {
+  if (!derbyState) return;
+  derbyState.swingsRestantes--;
+  if (derbyState.swingsRestantes <= 0) derbySiguienteBateador();
+  else actualizarDerbyUI();
+}
+
+function derbySiguienteBateador() {
+  derbyState.bateadorIdx++;
+  derbyState.swingsRestantes = 3;
+
+  if (derbyState.bateadorIdx < 3) {
+    // Siguiente bateador del mismo equipo
+    actualizarDerbyUI();
+    return;
+  }
+
+  // Terminó el equipo → cambiar turno o cerrar ronda
+  derbyState.bateadorIdx = 0;
+
+  if (derbyState.turno === "visitante") {
+    derbyState.turno = "local";
+    actualizarDerbyUI();
+    toast("⚾ Turno del LOCAL en el derby", 2500);
+  } else {
+    // Terminó la ronda completa
+    if (derbyState.rondaHRVisit !== derbyState.rondaHRLocal) {
+      const ganador = derbyState.rondaHRVisit > derbyState.rondaHRLocal ? "VISITANTE" : "LOCAL";
+      document.getElementById("modalDerby").style.display = "none";
+      const { cV, cL } = totalesCarreras();
+      mostrarGanador(ganador, cV, cL, `Derby de HR (Ronda ${derbyState.ronda})`);
+      derbyState  = null;
+      fasePartido = "normal";
+    } else {
+      // Nueva ronda
+      derbyState.ronda++;
+      derbyState.turno = "visitante";
+      derbyState.rondaHRVisit = 0;
+      derbyState.rondaHRLocal = 0;
+      actualizarDerbyUI();
+      toast(`⚾ Empate — Ronda ${derbyState.ronda} del derby`, 2500);
+    }
   }
 }
 
@@ -879,6 +1137,7 @@ function confirmarJugada() {
   }
 
   document.getElementById("modalJugada").style.display = "none";
+  actualizarStatsEnVivo();
   setTimeout(siguienteBateador, 150);
   guardarEstadoPartido();
 }
@@ -908,11 +1167,13 @@ function actualizarHits() {
 function actualizarTotales() { actualizarMarcadorUI(); }
 
 function resetMarcador() {
-  marcador = { inning: 1, outs: 0, turno: "visitante" };
+  marcador = { inning: 1, outs: 0, turno: "visitante", ultimoOut: null };
   bases = { 1: null, 2: null, 3: null };
   lineupPos = { visitante: 0, local: 0 };
   pitcherActivo = { visitante: null, local: null };
   outsPitcher   = { visitante: {}, local: {} };
+  fasePartido = "normal";
+  derbyState  = null;
   actualizarBasesUI();
   carrerasGrid = {
     visitante: { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0, 7:0 },
@@ -964,6 +1225,7 @@ function registrar(i) {
   // Abrir modal completo de jugada para hits y BB
   if (!modoEdicion) setTimeout(() => abrirModalJugada(i), 200);
   else guardarEstadoPartido(); // en modo restar guardar inmediato
+  actualizarStatsEnVivo(); // refrescar stats en tiempo real
 }
 
 // ============================================================
@@ -1368,6 +1630,8 @@ function editarPartido(idx) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${nombre}</td>` +
       stats.map(v => `<td class="stat">${v}</td>`).join("") +
+      `<td class="stat-av td-ave">.000</td>` +
+      `<td class="stat-av td-ops">.000</td>` +
       `<td class="td-acciones"><button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button><button onclick="this.closest('tr').remove()">✕</button></td>`;
     document.querySelector("#tablaVisitante tbody").appendChild(tr);
   });
@@ -1377,6 +1641,8 @@ function editarPartido(idx) {
     const tr = document.createElement("tr");
     tr.innerHTML = `<td>${nombre}</td>` +
       stats.map(v => `<td class="stat">${v}</td>`).join("") +
+      `<td class="stat-av td-ave">.000</td>` +
+      `<td class="stat-av td-ops">.000</td>` +
       `<td class="td-acciones"><button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button><button onclick="this.closest('tr').remove()">✕</button></td>`;
     document.querySelector("#tablaLocal tbody").appendChild(tr);
   });
@@ -1446,12 +1712,20 @@ function cancelarEdicion() {
 function resetJuego() {
   document.querySelector("#tablaVisitante tbody").innerHTML = "";
   document.querySelector("#tablaLocal tbody").innerHTML = "";
-  document.getElementById("pitchersVsVisitanteContainer").innerHTML = "";
-  document.getElementById("pitchersVsLocalContainer").innerHTML = "";
+
+  // Limpiar containers de pitcher si existen (compatibilidad)
+  const pVV = document.getElementById("pitchersVsVisitanteContainer");
+  const pVL = document.getElementById("pitchersVsLocalContainer");
+  if (pVV) pVV.innerHTML = "";
+  if (pVL) pVL.innerHTML = "";
+
   jugadorSeleccionado = null;
   jugadorNombre = null;
   tablaActiva = null;
   resetMarcador();
+  fasePartido = "normal";
+  derbyState  = null;
+
   const jA = document.getElementById("jugadorActivo");
   jA.textContent = "👆 Ningún jugador seleccionado";
   jA.classList.remove("activo-global");
