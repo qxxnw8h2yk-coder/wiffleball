@@ -1,0 +1,1435 @@
+:root {
+  --arena:     #f5f0e8;
+  --crema:     #faf8f4;
+  --borde:     #ddd8ce;
+  --texto:     #2c2a26;
+  --suave:     #7a7570;
+  --acento:    #5c6b4a;   /* verde oliva apagado */
+  --acento2:   #7b5c3e;   /* terracota marrón */
+  --acento3:   #4a5c6b;   /* azul pizarra */
+  --marca:     #c0392b;   /* rojo ladrillo solo para eliminar */
+  --blanco:    #ffffff;
+}
+
+/* =========================
+   BASE
+========================= */
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Barlow', Arial, sans-serif;
+  margin: 0;
+  background: var(--arena);
+  font-size: 14px;
+  color: var(--texto);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* =========================
+   HEADER
+========================= */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--texto);
+  color: var(--crema);
+  padding: 12px 16px;
+  border-bottom: 3px solid var(--acento2);
+}
+
+.logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
+
+.header-text h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: 1.5px;
+  line-height: 1.1;
+  color: var(--crema);
+}
+
+.header-sub {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 2px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* =========================
+   NAV
+========================= */
+.nav {
+  display: flex;
+  background: var(--texto);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 11px 4px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.45);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.nav-btn.active {
+  color: var(--crema);
+  border-bottom-color: var(--acento2);
+}
+
+/* =========================
+   SELECTOR JUGADOR ACTIVO
+========================= */
+.selector {
+  text-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  padding: 9px 16px;
+  background: var(--blanco);
+  border-bottom: 1px solid var(--borde);
+  font-weight: 600;
+  color: var(--suave);
+  transition: all 0.2s;
+}
+
+.selector.activo-global {
+  background: #f0ece3;
+  color: var(--acento2);
+  border-bottom-color: var(--acento2);
+}
+
+/* =========================
+   CARDS
+========================= */
+.card {
+  background: var(--blanco);
+  margin: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  border-left: 3px solid var(--borde);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.card h3 {
+  margin: 0 0 10px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--acento3);
+  letter-spacing: 0.3px;
+}
+
+.card p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--suave);
+  line-height: 1.5;
+}
+
+.crear-jugador-card { border-left-color: var(--acento); }
+
+/* =========================
+   INPUTS
+========================= */
+.input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.input-row input { flex: 1; }
+
+input, select {
+  padding: 10px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: 'Barlow', sans-serif;
+  background: var(--crema);
+  color: var(--texto);
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--acento3);
+  box-shadow: 0 0 0 3px rgba(74,92,107,0.1);
+}
+
+.info {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+}
+
+/* =========================
+   SECCIONES
+========================= */
+.seccion-titulo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--suave);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 12px 14px 6px;
+}
+
+.equipo-header {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
+  letter-spacing: 1px;
+  padding: 7px 14px;
+  margin: 4px 10px 0;
+  border-radius: 8px 8px 0 0;
+}
+
+.visitante-color { background: var(--acento2); color: var(--crema); }
+.local-color     { background: var(--acento3); color: var(--crema); }
+
+/* =========================
+   SELECTOR JUGADOR
+========================= */
+.selectorJugador {
+  display: flex;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.selectorJugador select { flex: 1; font-size: 13px; }
+
+/* =========================
+   TABLAS JUEGO
+========================= */
+.table-wrapper {
+  background: var(--blanco);
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+  margin: 0 10px 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.game-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 340px;
+}
+
+.game-table col.col-j { width: 90px; }
+.game-table col.col-x { width: 32px; }
+.game-table col       { width: auto; }
+
+.game-table thead tr {
+  background: var(--acento3);
+  color: var(--crema);
+}
+
+.game-table th {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 8px 2px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.game-table th:first-child {
+  text-align: left;
+  padding-left: 10px;
+}
+
+.game-table tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+  display: table-row;
+}
+
+.game-table tbody tr:hover  { background: #f2ede4; }
+.game-table tbody tr.activo { background: #ebe3d3 !important; }
+
+.game-table td {
+  border-bottom: 1px solid #edeae4;
+  text-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  height: 36px;
+  padding: 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: table-cell;
+  vertical-align: middle;
+}
+
+.game-table td:first-child {
+  text-align: left;
+  padding-left: 10px;
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.game-table td:last-child { text-align: center; padding: 0; }
+
+.game-table td button {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 0;
+}
+
+.game-table td button:active { color: var(--marca); }
+
+/* Keep old table/td rules only for scoreboard and stats tables */
+table { width: 100%; border-collapse: collapse; }
+
+td {
+  border-bottom: 1px solid #edeae4;
+  text-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+td:first-child {
+  text-align: left;
+  padding-left: 10px;
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  justify-content: flex-start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+td button {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: #ccc;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+td button:active { color: var(--marca); }
+
+.col-nombre { text-align: left !important; padding-left: 10px !important; }
+.col-del    { width: 36px; }
+
+/* =========================
+   BOTONES GENÉRICOS
+========================= */
+button {
+  border: none;
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+button:active { opacity: 0.75; transform: scale(0.97); }
+
+.btn-crear {
+  background: var(--acento);
+  color: var(--crema);
+  padding: 10px 18px;
+  white-space: nowrap;
+}
+
+.btn-agregar {
+  background: var(--acento3);
+  color: var(--crema);
+  padding: 10px 16px;
+  white-space: nowrap;
+}
+
+/* =========================
+   CONTROLES JUEGO
+========================= */
+.controles-juego { padding: 4px 10px 16px; }
+
+.modo {
+  width: 100%;
+  padding: 11px;
+  margin: 6px 0;
+  background: var(--texto);
+  color: var(--crema);
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+.modo span { color: #c9b07a; }
+
+.btn-siguiente {
+  width: 100%;
+  padding: 11px;
+  margin: 6px 0 4px;
+  background: var(--acento);
+  color: var(--crema);
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+.guardar {
+  width: 100%;
+  padding: 13px;
+  margin-top: 6px;
+  background: var(--acento2);
+  color: var(--crema);
+  font-size: 15px;
+  border-radius: 10px;
+}
+
+/* =========================
+   BOTONERA JUGADAS
+========================= */
+.acciones {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.acciones button {
+  background: var(--acento3);
+  color: var(--crema);
+  font-size: 15px;
+  padding: 14px 6px;
+  border-radius: 8px;
+}
+
+/* =========================
+   STATS TABS
+========================= */
+.tabs-stats {
+  display: flex;
+  gap: 6px;
+  padding: 10px 10px 0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 9px 4px;
+  background: var(--blanco);
+  color: var(--suave);
+  border: 1.5px solid var(--borde);
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+.tab-btn.active {
+  background: var(--texto);
+  color: var(--crema);
+  border-color: var(--texto);
+}
+
+/* =========================
+   CARDS STATS
+========================= */
+#historial,
+#historialPitcheo,
+#listaPartidos { padding: 4px 10px 10px; }
+
+.stat-card {
+  background: var(--blanco);
+  margin: 8px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border-left: 3px solid var(--acento3);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.stat-card h3 {
+  margin: 0 0 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--texto);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-card h3 button {
+  background: none;
+  color: #bbb;
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid #e0dbd2;
+  border-radius: 6px;
+}
+
+.stat-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.stat-pill {
+  background: var(--arena);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--suave);
+  border: 1px solid var(--borde);
+}
+
+.stat-pill span { color: var(--acento3); font-weight: 700; }
+
+.stat-pill.highlight {
+  background: var(--acento3);
+  color: var(--crema);
+  border-color: var(--acento3);
+}
+
+.stat-pill.highlight span { color: #c9b07a; }
+
+.stat-pill.era-good        { background: #edf2e8; border-color: #c2d4b0; }
+.stat-pill.era-good span   { color: var(--acento); }
+.stat-pill.era-bad         { background: #f5ebe8; border-color: #dbb8b0; }
+.stat-pill.era-bad span    { color: #9e4a3a; }
+
+.stat-pill.highlight-pit           { background: var(--acento2); color: var(--crema); border-color: var(--acento2); }
+.stat-pill.highlight-pit span      { color: #f0d4b8; }
+.stat-pill.era-good.highlight-pit  { background: var(--acento); border-color: var(--acento); }
+.stat-pill.era-good.highlight-pit span { color: #d4eac0; }
+.stat-pill.era-bad.highlight-pit   { background: #9e4a3a; border-color: #9e4a3a; }
+.stat-pill.era-bad.highlight-pit span  { color: #f5d0c8; }
+
+.partido-card {
+  background: var(--blanco);
+  margin: 8px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border-left: 3px solid var(--acento2);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+.partido-titulo { font-size: 15px; font-weight: 700; color: var(--texto); }
+.partido-fecha  { font-size: 12px; color: var(--suave); margin-top: 2px; }
+.partido-pit    { font-size: 11px; color: var(--suave); margin-top: 4px; font-style: italic; }
+
+/* =========================
+   RESPALDO
+========================= */
+.respaldo-card   { border-left-color: var(--acento3); }
+.info-card       { border-left-color: var(--acento2); background: #faf7f2; }
+.info-card p     { margin: 4px 0; }
+
+.btn-export {
+  width: 100%;
+  padding: 12px;
+  background: var(--acento3);
+  color: var(--crema);
+  font-size: 14px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+.btn-import-label {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: var(--acento);
+  color: var(--crema);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.btn-reset {
+  width: 100%;
+  padding: 12px;
+  background: var(--crema);
+  color: var(--marca);
+  border: 1.5px solid #dbb8b0;
+  font-size: 14px;
+  border-radius: 8px;
+  margin-top: 4px;
+}
+
+#importStatus {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--acento);
+}
+
+/* =========================
+   TOAST
+========================= */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--texto);
+  color: var(--crema);
+  padding: 11px 22px;
+  border-radius: 24px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  transition: transform 0.3s ease;
+  z-index: 1000;
+  white-space: nowrap;
+}
+
+.toast.visible { transform: translateX(-50%) translateY(0); }
+
+/* =========================
+   UTILIDADES STATS
+========================= */
+.juegos-count { font-size: 11px; color: #bbb; margin-top: 6px; }
+
+.empty-msg {
+  text-align: center;
+  color: #bbb;
+  padding: 24px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* =========================
+   TABLA ESTADÍSTICAS
+========================= */
+.stats-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 4px 12px;
+  border-radius: 10px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+}
+
+.stats-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--blanco);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  white-space: nowrap;
+  min-width: 600px;
+}
+
+.stats-tabla thead tr { background: var(--texto); color: var(--crema); }
+
+.stats-tabla th {
+  padding: 9px 8px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.stats-tabla th:first-child { text-align: left; padding-left: 12px; min-width: 110px; }
+
+.stats-tabla tbody tr { display: table-row; border-bottom: 1px solid #edeae4; transition: background 0.12s; }
+.stats-tabla tbody tr:hover { background: #f2ede4; }
+.scoreboard tbody tr { display: table-row; }
+
+.stats-tabla td {
+  display: table-cell;
+  padding: 8px 6px;
+  text-align: center;
+  height: auto;
+  border: none;
+  border-bottom: 1px solid #edeae4;
+  font-size: 13px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.stats-tabla td:first-child { text-align: left; padding-left: 12px; font-weight: 700; display: table-cell; }
+
+.col-nombre-stats { display: flex !important; align-items: center; gap: 6px; }
+
+.btn-eliminar-stat {
+  background: none;
+  color: #ccc;
+  font-size: 10px;
+  border: 1px solid #e0dbd2;
+  padding: 2px 5px;
+  border-radius: 4px;
+  width: auto;
+  margin-left: auto;
+}
+
+.stat-dest    { color: var(--acento3); font-weight: 700; }
+.stat-dest-hi { color: var(--crema); background: var(--acento3); font-weight: 700; border-radius: 4px; padding: 2px 5px; }
+.era-good     { background: var(--acento)  !important; color: var(--crema) !important; }
+.era-bad      { background: #9e4a3a !important; color: var(--crema) !important; }
+
+.rank-gold   td { background: #f7f2e4; }
+.rank-silver td { background: #f4f4f4; }
+.rank-bronze td { background: #f7f0ea; }
+.rank-gold   td:first-child::before { content: "🥇 "; }
+.rank-silver td:first-child::before { content: "🥈 "; }
+.rank-bronze td:first-child::before { content: "🥉 "; }
+
+/* =========================
+   BOTÓN EDITAR PARTIDO
+========================= */
+.btn-editar-partido {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px;
+  background: none;
+  border: 1.5px solid var(--borde);
+  color: var(--suave);
+  font-size: 12px;
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+}
+
+/* =========================
+   PITCHER FILAS DINÁMICAS
+========================= */
+.pitchers-container { padding: 0 10px; }
+
+.pitcher-fila {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  background: #f7f3ec;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.pitcher-select { flex: 1; font-size: 13px; min-width: 0; }
+
+.pitcher-outs-input {
+  width: 52px;
+  text-align: center;
+  font-size: 13px;
+  padding: 6px 4px;
+}
+
+.btn-del-pitcher {
+  background: none;
+  color: #ccc;
+  font-size: 13px;
+  padding: 4px 6px;
+  border: 1px solid #e0dbd2;
+  border-radius: 6px;
+  width: auto;
+}
+
+.pit-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--suave);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+
+.pit-hint {
+  font-weight: 400;
+  color: var(--suave);
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.btn-add-pitcher {
+  display: block;
+  width: calc(100% - 20px);
+  margin: 4px 10px 8px;
+  padding: 8px;
+  background: none;
+  border: 1.5px dashed var(--borde);
+  color: var(--suave);
+  font-size: 12px;
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* =========================
+   BANNER EDICIÓN
+========================= */
+.editando-banner {
+  background: #f0ece3;
+  border-bottom: 2px solid var(--acento2);
+  padding: 10px 14px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--acento2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.editando-banner button {
+  background: none;
+  border: 1.5px solid var(--borde);
+  color: var(--suave);
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  width: auto;
+  margin-left: auto;
+}
+
+/* =========================
+   MARCADOR
+========================= */
+.marcador-wrapper {
+  margin: 0 10px 10px;
+  background: #e8e4dc;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid var(--borde);
+}
+
+.inning-estado {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px 8px 8px;
+  background: #e8e4dc;
+  border-bottom: 1px solid var(--borde);
+  gap: 4px;
+}
+
+.inning-bloque {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.inning-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--suave);
+  text-transform: uppercase;
+}
+
+.inning-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inning-num {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 32px;
+  color: var(--texto);
+  min-width: 36px;
+  text-align: center;
+  line-height: 1;
+}
+
+.inn-btn {
+  background: var(--blanco);
+  color: var(--suave);
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.outs-display {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 2px 0;
+}
+
+.out-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--blanco);
+  border: 2px solid var(--borde);
+  transition: all 0.2s;
+}
+
+.out-dot.out-activo {
+  background: var(--acento2);
+  border-color: var(--acento2);
+  box-shadow: 0 0 4px rgba(123,92,62,0.4);
+}
+
+.outs-controls { display: flex; gap: 4px; }
+
+.turno-btn {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  letter-spacing: 1px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  width: auto;
+}
+
+.turno-vis { background: var(--acento2); color: var(--crema); }
+.turno-loc { background: var(--acento3); color: var(--crema); }
+
+.scoreboard-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scoreboard {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 300px;
+  background: var(--blanco);
+}
+
+.scoreboard thead tr { background: #f0ece3; }
+
+.scoreboard th, .scoreboard td {
+  display: table-cell;
+  text-align: center;
+  padding: 0;
+  border: none;
+  height: auto;
+}
+
+.sb-equipo { width: 72px; min-width: 72px; }
+
+.sb-inn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--suave);
+  letter-spacing: 1px;
+  padding: 6px 2px 4px;
+  width: 36px;
+  min-width: 32px;
+  transition: color 0.2s;
+}
+
+.sb-inn-activa { color: var(--acento2) !important; font-size: 13px; }
+
+.sb-extra { opacity: 0.5; }
+
+.sb-sep { width: 6px; background: var(--borde); }
+
+.sb-total {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--suave);
+  letter-spacing: 1px;
+  padding: 6px 6px 4px;
+  width: 36px;
+}
+
+.sb-equipo-nombre {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--texto);
+  text-align: left;
+  padding: 9px 6px 9px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 72px;
+}
+
+.sb-total-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  color: var(--texto);
+  padding: 4px 6px;
+  background: #f0ece3;
+  transition: all 0.3s;
+}
+
+.sb-ganador {
+  color: var(--acento2) !important;
+  background: #f5ede3 !important;
+}
+
+#sbVisitante { border-bottom: 1px solid var(--borde); }
+
+.sb-cell {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 17px;
+  color: #ccc;
+  padding: 9px 2px;
+  text-align: center;
+  border-left: 1px solid #edeae4;
+  transition: all 0.2s;
+  min-width: 32px;
+}
+
+.sb-cell.sb-tiene-carreras { color: var(--texto); font-weight: 700; }
+
+.sb-cell.sb-cell-activa {
+  background: #f5ede3;
+  color: var(--acento2);
+}
+
+.sb-cell.sb-extra { opacity: 0.4; }
+.sb-cell.sb-extra.sb-tiene-carreras,
+.sb-cell.sb-extra.sb-cell-activa { opacity: 1; }
+
+/* =========================
+   RESPONSIVE / iPAD
+========================= */
+@media (min-width: 600px) {
+  body { max-width: 700px; margin: auto; }
+  .acciones { grid-template-columns: repeat(5, 1fr); }
+  tbody tr  { grid-template-columns: 130px repeat(9, 1fr) 40px; }
+  .header-text h1 { font-size: 26px; }
+}
+
+/* =========================
+   MODAL CA / CI
+========================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(44,42,38,0.5);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-box {
+  background: var(--crema);
+  border-radius: 14px;
+  padding: 22px 24px;
+  width: 100%;
+  max-width: 300px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  border: 1px solid var(--borde);
+}
+
+.modal-titulo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--suave);
+  margin-bottom: 4px;
+}
+
+.modal-jugador {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  color: var(--texto);
+  margin-bottom: 16px;
+  letter-spacing: 1px;
+}
+
+.modal-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+
+.modal-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--texto);
+  width: 28px;
+}
+
+.modal-btn {
+  background: var(--arena);
+  border: 1.5px solid var(--borde);
+  color: var(--texto);
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-val {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: var(--texto);
+  min-width: 36px;
+  text-align: center;
+}
+
+.modal-ok {
+  width: 100%;
+  padding: 12px;
+  background: var(--acento);
+  color: var(--crema);
+  font-size: 16px;
+  border-radius: 10px;
+  margin-top: 6px;
+}
+
+/* =========================
+   DIAMANTE DE BASES
+========================= */
+.diamante {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.base-row {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  justify-content: center;
+}
+
+.base-row.top  { margin-bottom: 1px; }
+.base-row.mid  { gap: 6px; }
+
+.base {
+  width: 16px;
+  height: 16px;
+  background: var(--blanco);
+  border: 2px solid var(--borde);
+  transform: rotate(45deg);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.base.home {
+  width: 10px;
+  height: 10px;
+  background: var(--borde);
+  border: none;
+  cursor: default;
+  opacity: 0.4;
+}
+
+.base.base-ocupada {
+  background: var(--acento2);
+  border-color: var(--acento2);
+  box-shadow: 0 0 4px rgba(123,92,62,0.4);
+}
+
+/* =========================
+   MODAL ACTUALIZADO
+========================= */
+.modal-jugada-tipo {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  color: var(--acento2);
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+  line-height: 1;
+}
+
+.modal-bases-info {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  color: var(--suave);
+  background: var(--arena);
+  border-radius: 6px;
+  padding: 5px 10px;
+  margin-bottom: 14px;
+  border: 1px solid var(--borde);
+}
+
+.iniciar {
+  width: 100%;
+  padding: 14px;
+  margin-top: 8px;
+  background: var(--texto);
+  color: var(--crema);
+  font-size: 17px;
+  border-radius: 10px;
+  letter-spacing: 1px;
+}
+
+.base-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--acento2);
+  text-align: center;
+  max-width: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+/* =========================
+   SELECTOR DE BASE
+========================= */
+.base-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+
+.modal-base-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 10px 0 4px;
+}
+
+.modal-jugador-btn {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--arena);
+  border: 1.5px solid var(--borde);
+  color: var(--texto);
+  font-size: 14px;
+  border-radius: 8px;
+  text-align: left;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+}
+
+.modal-jugador-btn-activo {
+  background: var(--acento3);
+  color: var(--crema);
+  border-color: var(--acento3);
+}
+
+.modal-btn-cerrar {
+  width: 100%;
+  padding: 10px;
+  background: none;
+  border: 1.5px solid var(--borde);
+  color: var(--suave);
+  font-size: 13px;
+  border-radius: 8px;
+  margin-top: 6px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+}
+
+/* =========================
+   MODAL JUGADA COMPLETO
+========================= */
+.modal-box-grande {
+  max-height: 88vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mj-seccion {
+  background: var(--arena);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--borde);
+}
+
+.mj-seccion-titulo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--suave);
+  margin-bottom: 8px;
+}
+
+.mj-hint {
+  font-size: 11px;
+  color: var(--suave);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.mj-bases { display: flex; flex-direction: column; gap: 6px; }
+
+.mj-base-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--blanco);
+  border-radius: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--borde);
+}
+
+.mj-base-tag {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 14px;
+  color: var(--acento3);
+  min-width: 24px;
+}
+
+.mj-base-nombre {
+  flex: 1;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.mj-base-cambiar {
+  background: var(--arena);
+  border: 1px solid var(--borde);
+  color: var(--suave);
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  width: auto;
+}
+
+.mj-base-vaciar {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 14px;
+  padding: 4px;
+  width: auto;
+}
+
+.mj-anotador-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--blanco);
+  border-radius: 6px;
+  padding: 7px 10px;
+  border: 1px solid var(--borde);
+  margin-bottom: 4px;
+}
+
+.mj-anotador-nombre {
+  flex: 1;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--acento);
+}
+
+.mj-btn-agregar-anotador {
+  width: 100%;
+  padding: 8px;
+  margin-top: 6px;
+  background: none;
+  border: 1.5px dashed var(--borde);
+  color: var(--suave);
+  font-size: 12px;
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+}
+
+/* =========================
+   FIELDER'S CHOICE
+========================= */
+.btn-fc {
+  background: #6b5c3e;
+  color: var(--crema);
+  font-size: 13px;
+  padding: 14px 6px;
+  border-radius: 8px;
+  grid-column: span 1;
+}
+
+/* =========================
+   EDITOR DE JUGADORES
+========================= */
+#listaJugadoresEdit {
+  padding: 8px 10px;
+}
+
+.edit-jugador-card {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.edit-jugador-input {
+  flex: 1;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 10px 12px;
+  border: 1.5px solid var(--borde);
+  border-radius: 8px;
+  background: var(--blanco);
+  color: var(--texto);
+  width: auto;
+}
+
+.edit-jugador-btn {
+  background: var(--acento);
+  color: var(--crema);
+  font-size: 16px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  width: auto;
+  white-space: nowrap;
+}

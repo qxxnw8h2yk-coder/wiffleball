@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Liga Cubana de Wiffleball Chile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="LOGO.png">
+  <link rel="apple-touch-icon" href="LOGO.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="header">
+  <img src="LOGO.png" class="logo">
+  <div class="header-text">
+    <h1>Liga Cubana de Wiffleball</h1>
+    <span class="header-sub">Chile · Temporada 2025</span>
+  </div>
+</div>
+
+<div class="nav">
+  <button class="nav-btn active" id="navJuego" onclick="mostrarVista('juego',this)">⚾ Juego</button>
+  <button class="nav-btn" onclick="mostrarVista('stats',this)">📊 Stats</button>
+  <button class="nav-btn" onclick="mostrarVista('respaldo',this)">💾 Respaldo</button>
+</div>
+
+<div id="jugadorActivo" class="selector">
+  <span class="selector-icon">👆</span> Ningún jugador seleccionado
+</div>
+
+<!-- CREAR JUGADOR -->
+<div class="card crear-jugador-card" style="margin:10px;">
+  <h3>➕ Crear jugador</h3>
+  <div class="input-row">
+    <input id="nuevoJugador" placeholder="Nombre del jugador" autocomplete="off">
+    <button class="btn-crear" onclick="crearJugadorGlobal()">Crear</button>
+  </div>
+</div>
+
+<!-- ===== VISTA JUEGO ===== -->
+<div id="vistaJuego">
+
+  <div id="editandoBanner" class="editando-banner" style="display:none">
+    ✏️ Editando partido — <span id="editandoLabel"></span>
+    <button onclick="cancelarEdicion()">Cancelar</button>
+  </div>
+
+  <div class="seccion-titulo">📋 Datos del Partido</div>
+  <div class="info">
+    <input id="local" placeholder="Equipo Local" autocomplete="off">
+    <input id="visitante" placeholder="Equipo Visitante" autocomplete="off">
+    <input type="date" id="fecha">
+  </div>
+
+  <!-- ===== MARCADOR ===== -->
+  <div class="marcador-wrapper">
+
+    <!-- Estado del inning -->
+    <div class="inning-estado">
+      <div class="inning-bloque">
+        <span class="inning-label">ENTRADA</span>
+        <div class="inning-controls">
+          <button class="inn-btn" onclick="cambiarInning(-1)">‹</button>
+          <span id="inningActual" class="inning-num">1</span>
+          <button class="inn-btn" onclick="cambiarInning(1)">›</button>
+        </div>
+      </div>
+      <div class="inning-bloque">
+        <span class="inning-label">OUTS</span>
+        <div class="outs-display">
+          <span class="out-dot" id="out0"></span>
+          <span class="out-dot" id="out1"></span>
+          <span class="out-dot" id="out2"></span>
+        </div>
+      </div>
+
+      <!-- DIAMANTE -->
+      <div class="inning-bloque">
+        <span class="inning-label">BASES</span>
+        <div class="diamante">
+          <div class="base-row top">
+            <div class="base-slot" onclick="abrirSelectorBase(2)">
+              <span class="base" id="base2"></span>
+              <span class="base-label" id="baseLabel2"></span>
+            </div>
+          </div>
+          <div class="base-row mid">
+            <div class="base-slot" onclick="abrirSelectorBase(3)">
+              <span class="base" id="base3"></span>
+              <span class="base-label" id="baseLabel3"></span>
+            </div>
+            <span class="base home"></span>
+            <div class="base-slot" onclick="abrirSelectorBase(1)">
+              <span class="base" id="base1"></span>
+              <span class="base-label" id="baseLabel1"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="inning-bloque">
+        <span class="inning-label">TURNO</span>
+        <button class="turno-btn" id="turnoBtn" onclick="toggleTurno()">🛫 VIS</button>
+      </div>
+    </div>
+
+    <!-- Tabla de entradas estilo béisbol -->
+    <div class="scoreboard-scroll">
+      <table class="scoreboard">
+        <thead>
+          <tr>
+            <th class="sb-equipo"></th>
+            <th class="sb-inn" id="sbh1">1</th>
+            <th class="sb-inn" id="sbh2">2</th>
+            <th class="sb-inn" id="sbh3">3</th>
+            <th class="sb-inn" id="sbh4">4</th>
+            <th class="sb-inn" id="sbh5">5</th>
+            <th class="sb-inn sb-extra" id="sbh6">6</th>
+            <th class="sb-inn sb-extra" id="sbh7">7</th>
+            <th class="sb-sep"></th>
+            <th class="sb-total">C</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr id="sbVisitante">
+            <td class="sb-equipo-nombre" id="sbNomVisitante">VISITANTE</td>
+            <td class="sb-cell" id="v1">·</td>
+            <td class="sb-cell" id="v2">·</td>
+            <td class="sb-cell" id="v3">·</td>
+            <td class="sb-cell" id="v4">·</td>
+            <td class="sb-cell" id="v5">·</td>
+            <td class="sb-cell sb-extra" id="v6">·</td>
+            <td class="sb-cell sb-extra" id="v7">·</td>
+            <td class="sb-sep"></td>
+            <td class="sb-total-val" id="totalCVisitante">0</td>
+          </tr>
+          <tr id="sbLocal">
+            <td class="sb-equipo-nombre" id="sbNomLocal">LOCAL</td>
+            <td class="sb-cell" id="l1">·</td>
+            <td class="sb-cell" id="l2">·</td>
+            <td class="sb-cell" id="l3">·</td>
+            <td class="sb-cell" id="l4">·</td>
+            <td class="sb-cell" id="l5">·</td>
+            <td class="sb-cell sb-extra" id="l6">·</td>
+            <td class="sb-cell sb-extra" id="l7">·</td>
+            <td class="sb-sep"></td>
+            <td class="sb-total-val" id="totalCLocal">0</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- fin marcador-wrapper -->
+
+  <!-- VISITANTE -->
+  <div class="equipo-header visitante-color">🛫 Visitante</div>
+  <div id="pitchersVsVisitanteContainer" class="pitchers-container">
+    <!-- pitchers dinámicos -->
+  </div>
+  <button class="btn-add-pitcher" onclick="agregarFilaPitcher('visitante')">+ Agregar pitcher vs Visitante <span class="pit-hint">(máx 21 outs = 7 entradas)</span></button>
+
+  <div class="selectorJugador">
+    <select id="selectVisitante"><option value="">+ Agregar jugador visitante</option></select>
+    <button class="btn-agregar" onclick="agregarJugadorDesdeLista('visitante')">Agregar</button>
+  </div>
+  <div class="table-wrapper">
+    <table class="game-table" id="tablaVisitante">
+      <colgroup>
+        <col class="col-j">
+        <col><col><col><col><col><col><col><col><col>
+        <col class="col-x">
+      </colgroup>
+      <thead><tr>
+        <th>Jugador</th>
+        <th>1B</th><th>2B</th><th>3B</th><th>HR</th>
+        <th>BB</th><th>K</th><th>O</th><th>CA</th><th>CI</th>
+        <th>✕</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- LOCAL -->
+  <div class="equipo-header local-color">🏠 Local</div>
+  <div id="pitchersVsLocalContainer" class="pitchers-container">
+    <!-- pitchers dinámicos -->
+  </div>
+  <button class="btn-add-pitcher" onclick="agregarFilaPitcher('local')">+ Agregar pitcher vs Local <span class="pit-hint">(máx 21 outs = 7 entradas)</span></button>
+
+  <div class="selectorJugador">
+    <select id="selectLocal"><option value="">+ Agregar jugador local</option></select>
+    <button class="btn-agregar" onclick="agregarJugadorDesdeLista('local')">Agregar</button>
+  </div>
+  <div class="table-wrapper">
+    <table class="game-table" id="tablaLocal">
+      <colgroup>
+        <col class="col-j">
+        <col><col><col><col><col><col><col><col><col>
+        <col class="col-x">
+      </colgroup>
+      <thead><tr>
+        <th>Jugador</th>
+        <th>1B</th><th>2B</th><th>3B</th><th>HR</th>
+        <th>BB</th><th>K</th><th>O</th><th>CA</th><th>CI</th>
+        <th>✕</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="controles-juego">
+    <button class="modo" onclick="toggleModo()">Modo: <span id="modoTexto">SUMAR</span></button>
+    <div class="acciones">
+      <button onclick="registrar(0)">1B</button>
+      <button onclick="registrar(1)">2B</button>
+      <button onclick="registrar(2)">3B</button>
+      <button onclick="registrar(3)">HR</button>
+      <button onclick="registrar(4)">BB</button>
+      <button onclick="registrar(5)">K</button>
+      <button onclick="registrar(6)">O</button>
+      <button onclick="registrar(7)">CA</button>
+      <button onclick="registrar(8)">CI</button>
+      <button class="btn-fc" onclick="registrarFC()">FC</button>
+    </div>
+    <button class="btn-siguiente" onclick="siguienteBateador()">➡️ Siguiente bateador</button>
+    <button class="iniciar" id="btnIniciarJuego" onclick="iniciarJuego()">⚾ Iniciar Juego</button>
+    <button class="guardar" id="btnGuardar" onclick="guardarPartido()" style="display:none">💾 Guardar Partido</button>
+  </div>
+
+</div>
+
+<!-- ===== VISTA STATS ===== -->
+<div id="vistaStats" style="display:none;">
+
+  <div class="tabs-stats">
+    <button class="tab-btn active" onclick="mostrarTabStats('bateo',this)">Bateo</button>
+    <button class="tab-btn" onclick="mostrarTabStats('pitcheo',this)">Pitcheo</button>
+    <button class="tab-btn" onclick="mostrarTabStats('partidos',this)">Partidos</button>
+    <button class="tab-btn" onclick="mostrarTabStats('jugadores',this)">✎ Jugadores</button>
+  </div>
+
+  <div id="tabBateo">
+    <div class="seccion-titulo">⚾ Estadísticas de Bateo</div>
+    <div id="historial"></div>
+  </div>
+
+  <div id="tabPitcheoStats" style="display:none;">
+    <div class="seccion-titulo">🥎 Estadísticas de Pitcheo</div>
+    <div id="historialPitcheo"></div>
+  </div>
+
+  <div id="tabPartidos" style="display:none;">
+    <div class="seccion-titulo">📅 Historial de Partidos</div>
+    <div id="listaPartidos"></div>
+  </div>
+
+  <div id="tabJugadores" style="display:none;">
+    <div class="seccion-titulo">✎ Editar jugadores</div>
+    <div id="listaJugadoresEdit"></div>
+  </div>
+
+</div>
+
+<!-- ===== VISTA RESPALDO ===== -->
+<div id="vistaRespaldo" style="display:none;">
+  <div class="seccion-titulo">💾 Respaldo de Datos</div>
+  <div class="card respaldo-card">
+    <h3>📤 Exportar datos</h3>
+    <p>Descarga un archivo JSON con todos los jugadores, partidos y estadísticas.</p>
+    <button class="btn-export" onclick="exportarJSON()">Exportar JSON</button>
+  </div>
+  <div class="card respaldo-card">
+    <h3>📥 Importar respaldo</h3>
+    <p>Carga un archivo JSON previamente exportado. <strong>Reemplazará los datos actuales.</strong></p>
+    <label class="btn-import-label" for="importFile">Seleccionar archivo JSON</label>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarJSON(event)">
+    <div id="importStatus"></div>
+  </div>
+  <div class="card respaldo-card">
+    <h3>🗑️ Resetear datos</h3>
+    <p>Elimina todos los datos guardados. Esta acción no se puede deshacer.</p>
+    <button class="btn-reset" onclick="resetearTodo()">Borrar todo</button>
+  </div>
+  <div class="card respaldo-card info-card">
+    <h3>ℹ️ Instrucciones para iPad</h3>
+    <p>1. Presiona <strong>Exportar JSON</strong> para descargar el respaldo.</p>
+    <p>2. En Safari, usa el ícono de compartir → <strong>Guardar en Archivos</strong> → iCloud Drive o Dropbox.</p>
+    <p>3. Para restaurar, presiona <strong>Importar respaldo</strong> y selecciona el archivo.</p>
+  </div>
+</div>
+
+<!-- MODAL FIELDER'S CHOICE -->
+<div id="modalFC" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-titulo">Fielder's Choice</div>
+    <div class="modal-jugador" id="fc-bateador"></div>
+    <p style="font-size:12px;color:var(--suave);margin:4px 0 12px">El bateador llega a 1B. ¿A quién sacan out?</p>
+    <div class="modal-base-lista" id="fc-lista"></div>
+    <button class="modal-btn-cerrar" style="margin-top:8px" onclick="cerrarFC()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL SELECTOR BASE (asignación manual desde diamante) -->
+<div id="modalBase" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-titulo">¿Quién está en <span id="modalBaseNum"></span>?</div>
+    <div class="modal-base-lista" id="modalBaseLista"></div>
+    <button class="btn-reset" style="margin-top:8px" onclick="limpiarBase()">🗑 Vaciar base</button>
+    <button class="modal-btn-cerrar" onclick="cerrarSelectorBase()">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL RESULTADO JUGADA -->
+<div id="modalJugada" class="modal-overlay" style="display:none">
+  <div class="modal-box modal-box-grande">
+    <div class="modal-titulo">Resultado de la jugada</div>
+    <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:12px">
+      <span class="modal-jugador" id="mj-bateador"></span>
+      <span class="modal-jugada-tipo" id="mj-tipo"></span>
+    </div>
+
+    <!-- OUTS EXTRA -->
+    <div class="mj-seccion">
+      <div class="mj-seccion-titulo">⚡ Outs adicionales en la jugada</div>
+      <div class="modal-fila">
+        <span class="modal-label" style="font-size:12px">Outs</span>
+        <button class="modal-btn" onclick="cambiarMJ('outsExtra',-1)">−</button>
+        <span class="modal-val" id="mj-outsExtra">0</span>
+        <button class="modal-btn" onclick="cambiarMJ('outsExtra',1)">+</button>
+      </div>
+      <div class="mj-hint">Doble play, corredor cogido, etc.</div>
+    </div>
+
+    <!-- BASES RESULTANTES -->
+    <div class="mj-seccion">
+      <div class="mj-seccion-titulo">🔷 Estado de bases (editable)</div>
+      <div class="mj-bases">
+        <div class="mj-base-fila">
+          <span class="mj-base-tag">1B</span>
+          <span class="mj-base-nombre" id="mj-base1-nombre">—</span>
+          <button class="mj-base-cambiar" onclick="abrirSelectorBaseModal(1)">✎</button>
+          <button class="mj-base-vaciar" onclick="vaciarBaseModal(1)">✕</button>
+        </div>
+        <div class="mj-base-fila">
+          <span class="mj-base-tag">2B</span>
+          <span class="mj-base-nombre" id="mj-base2-nombre">—</span>
+          <button class="mj-base-cambiar" onclick="abrirSelectorBaseModal(2)">✎</button>
+          <button class="mj-base-vaciar" onclick="vaciarBaseModal(2)">✕</button>
+        </div>
+        <div class="mj-base-fila">
+          <span class="mj-base-tag">3B</span>
+          <span class="mj-base-nombre" id="mj-base3-nombre">—</span>
+          <button class="mj-base-cambiar" onclick="abrirSelectorBaseModal(3)">✎</button>
+          <button class="mj-base-vaciar" onclick="vaciarBaseModal(3)">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CORREDORES QUE ANOTAN -->
+    <div class="mj-seccion">
+      <div class="mj-seccion-titulo">🏃 Corredores que anotan (CA individual)</div>
+      <div id="mj-anotadores"></div>
+      <button class="mj-btn-agregar-anotador" onclick="abrirSelectorAnotador()">+ Agregar corredor que anotó</button>
+    </div>
+
+    <!-- CI DEL BATEADOR -->
+    <div class="mj-seccion">
+      <div class="mj-seccion-titulo">CI del bateador</div>
+      <div class="modal-fila">
+        <span class="modal-label" style="font-size:12px">CI</span>
+        <button class="modal-btn" onclick="cambiarMJ('ci',-1)">−</button>
+        <span class="modal-val" id="mj-ci">0</span>
+        <button class="modal-btn" onclick="cambiarMJ('ci',1)">+</button>
+      </div>
+    </div>
+
+    <button class="modal-ok" onclick="confirmarJugada()">✓ Confirmar — Siguiente bateador</button>
+  </div>
+</div>
+
+<!-- MODAL SELECTOR JUGADOR (dentro de jugada) -->
+<div id="modalSelectorJugador" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-titulo" id="mj-selector-titulo">Seleccionar jugador</div>
+    <div class="modal-base-lista" id="mj-selector-lista"></div>
+    <button class="modal-btn-cerrar" onclick="cerrarSelectorJugador()">Cancelar</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
