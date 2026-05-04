@@ -738,6 +738,9 @@ button:active { opacity: 0.75; transform: scale(0.97); }
 .rank-gold   td:first-child::before { content: "🥇 "; }
 .rank-silver td:first-child::before { content: "🥈 "; }
 .rank-bronze td:first-child::before { content: "🥉 "; }
+.rank-gold   .stat-dest-hi,
+.rank-silver .stat-dest-hi,
+.rank-bronze .stat-dest-hi { color: var(--crema) !important; background: var(--acento3) !important; }
 
 /* =========================
    BOTÓN EDITAR PARTIDO
@@ -1576,4 +1579,78 @@ button:active { opacity: 0.75; transform: scale(0.97); }
   .game-table tbody tr {
     grid-template-columns: 120px repeat(9, 1fr) 46px 46px 52px;
   }
+}
+
+/* =========================
+   FECHA + HORA
+========================= */
+.info-fecha-hora {
+  display: flex;
+  gap: 8px;
+}
+
+/* =========================
+   DESHACER
+========================= */
+.btn-deshacer {
+  width: 100%;
+  padding: 11px;
+  margin: 6px 0 4px;
+  background: #6b5c3e;
+  color: var(--crema);
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+/* =========================
+   PDF BUTTON
+========================= */
+.btn-pdf {
+  background: var(--acento2);
+  color: var(--crema);
+  font-size: 11px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  width: auto;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.edit-jugador-del {
+  background: none;
+  border: 1.5px solid #dbb8b0;
+  color: var(--marca);
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  width: auto;
+  white-space: nowrap;
+}
+
+/* =========================
+   PARTIDO ACCIONES
+========================= */
+.partido-acciones {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.partido-acciones .btn-editar-partido {
+  flex: 1;
+  margin-top: 0;
+}
+
+.btn-eliminar-partido {
+  flex: 1;
+  padding: 8px;
+  background: none;
+  border: 1.5px solid #dbb8b0;
+  color: var(--marca);
+  font-size: 12px;
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
 }

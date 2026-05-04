@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Liga Cubana de Wiffleball Chile</title>
+  <title>Liga Cubana de Wiffleball Chile · Since 2026</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
   <img src="LOGO.png" class="logo">
   <div class="header-text">
     <h1>Liga Cubana de Wiffleball</h1>
-    <span class="header-sub">Chile · Temporada 2025</span>
+    <span class="header-sub">Chile · Since 2026</span>
   </div>
 </div>
 
@@ -31,14 +31,7 @@
   <span class="selector-icon">👆</span> Ningún jugador seleccionado
 </div>
 
-<!-- CREAR JUGADOR -->
-<div class="card crear-jugador-card" style="margin:10px;">
-  <h3>➕ Crear jugador</h3>
-  <div class="input-row">
-    <input id="nuevoJugador" placeholder="Nombre del jugador" autocomplete="off">
-    <button class="btn-crear" onclick="crearJugadorGlobal()">Crear</button>
-  </div>
-</div>
+
 
 <!-- ===== VISTA JUEGO ===== -->
 <div id="vistaJuego">
@@ -52,7 +45,10 @@
   <div class="info">
     <input id="local" placeholder="Equipo Local" autocomplete="off">
     <input id="visitante" placeholder="Equipo Visitante" autocomplete="off">
-    <input type="date" id="fecha">
+    <div class="info-fecha-hora">
+      <input type="date" id="fecha" style="flex:2">
+      <input type="time" id="hora" style="flex:1">
+    </div>
   </div>
 
   <!-- ===== MARCADOR ===== -->
@@ -220,7 +216,6 @@
   </div>
 
   <div class="controles-juego">
-    <button class="modo" onclick="toggleModo()">Modo: <span id="modoTexto">SUMAR</span></button>
     <div class="acciones">
       <button onclick="registrar(0)">1B</button>
       <button onclick="registrar(1)">2B</button>
@@ -229,10 +224,8 @@
       <button onclick="registrar(4)">BB</button>
       <button onclick="registrar(5)">K</button>
       <button onclick="registrar(6)">O</button>
-      <button onclick="registrar(7)">CA</button>
-      <button onclick="registrar(8)">CI</button>
-      <button class="btn-fc" onclick="registrarFC()">FC</button>
     </div>
+    <button class="btn-deshacer" onclick="deshacerUltimaJugada()">↩ Deshacer última jugada</button>
     <button class="btn-siguiente" onclick="siguienteBateador()">➡️ Siguiente bateador</button>
     <button class="iniciar" id="btnIniciarJuego" onclick="iniciarJuego()">⚾ Iniciar Juego</button>
     <button class="guardar" id="btnGuardar" onclick="guardarPartido()" style="display:none">💾 Guardar Partido</button>
@@ -251,12 +244,18 @@
   </div>
 
   <div id="tabBateo">
-    <div class="seccion-titulo">⚾ Estadísticas de Bateo</div>
+    <div class="seccion-titulo" style="display:flex;align-items:center;justify-content:space-between">
+      <span>⚾ Estadísticas de Bateo</span>
+      <button class="btn-pdf" onclick="descargarPDF('bateo')">⬇ PDF</button>
+    </div>
     <div id="historial"></div>
   </div>
 
   <div id="tabPitcheoStats" style="display:none;">
-    <div class="seccion-titulo">🥎 Estadísticas de Pitcheo</div>
+    <div class="seccion-titulo" style="display:flex;align-items:center;justify-content:space-between">
+      <span>🥎 Estadísticas de Pitcheo</span>
+      <button class="btn-pdf" onclick="descargarPDF('pitcheo')">⬇ PDF</button>
+    </div>
     <div id="historialPitcheo"></div>
   </div>
 
@@ -266,7 +265,19 @@
   </div>
 
   <div id="tabJugadores" style="display:none;">
-    <div class="seccion-titulo">✎ Editar jugadores</div>
+    <div class="seccion-titulo">✎ Jugadores</div>
+
+    <!-- Crear nuevo jugador -->
+    <div class="card" style="margin:10px;border-left-color:var(--acento)">
+      <h3>➕ Crear nuevo jugador</h3>
+      <div class="input-row" style="margin-bottom:6px">
+        <input id="nuevoNombre" placeholder="Nombre" autocomplete="off" style="flex:1">
+        <input id="nuevoApellido" placeholder="Apellido" autocomplete="off" style="flex:1">
+      </div>
+      <button class="btn-crear" onclick="crearJugadorGlobal()" style="width:100%">Crear jugador</button>
+    </div>
+
+    <!-- Lista editable -->
     <div id="listaJugadoresEdit"></div>
   </div>
 
