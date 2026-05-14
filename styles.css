@@ -1854,3 +1854,72 @@ button:active { opacity: 0.75; transform: scale(0.97); }
 .leyenda-jugadas span:nth-child(4) { color: var(--acento2); }  /* HR */
 .leyenda-jugadas span:nth-child(8) { color: var(--acento); }   /* CA */
 .leyenda-jugadas span:nth-child(9) { color: #9b59b6; }         /* CI */
+
+/* =========================
+   MINI SCOREBOARD EN HISTORIAL
+========================= */
+.sb-mini-wrap {
+  margin: 8px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--borde);
+}
+
+.sb-mini {
+  border-collapse: collapse;
+  table-layout: auto;
+  font-family: 'Barlow Condensed', sans-serif;
+  background: var(--blanco);
+  width: 100%;
+}
+
+.sb-mini thead tr { background: var(--acento3); display: table-row; }
+.sb-mini tbody tr { display: table-row; }
+.sb-mini tbody tr:first-child { border-bottom: 1px solid var(--borde); }
+
+.sb-mini th {
+  display: table-cell;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--crema);
+  padding: 5px 8px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.sb-mini th:first-child { text-align: left; padding-left: 12px; }
+
+.sb-mini td {
+  display: table-cell;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
+  color: #999;
+  padding: 8px 8px;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.sb-mini .sb-mini-nom {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--texto);
+  text-align: left;
+  padding-left: 12px;
+  white-space: nowrap;
+}
+
+.sb-mini .sb-mini-run { color: var(--texto); font-weight: 700; font-size: 18px; }
+
+.sb-mini .sb-mini-sep { width: 4px; background: var(--borde); padding: 0 2px; }
+
+.sb-mini .sb-mini-total {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--texto);
+  background: #f0ece3;
+  padding: 8px 14px;
+}
+
+.sb-mini .sb-mini-winner { color: var(--acento2); background: #f5ede3; }

@@ -1710,8 +1710,11 @@ function distribuirStatsPitcheo(bateadores, pitchersArr, fecha, partidoStr) {
 
 function _sumarPitcher(nombre, s, fecha, partidoStr) {
   if (!pitchers[nombre]) pitchers[nombre] = {
-    totalH:0, totalHR:0, totalBB:0, totalK:0, totalO:0, totalER:0, juegos:[]
+    totalH:0, totalHR:0, totalBB:0, totalK:0, totalO:0, totalER:0, juegos:[], victorias:0, derrotas:0
   };
+  // Asegurar que juegos existe aunque el pitcher venga de un JSON importado
+  if (!Array.isArray(pitchers[nombre].juegos)) pitchers[nombre].juegos = [];
+
   pitchers[nombre].totalH  += s.H;
   pitchers[nombre].totalHR += s.HR;
   pitchers[nombre].totalBB += s.BB;
@@ -1722,12 +1725,15 @@ function _sumarPitcher(nombre, s, fecha, partidoStr) {
 }
 
 // Inverso: restar stats de un partido previo
-function restarStatsPitcherPartido(pitchersArr, fecha, partidoStr) {
+function restarStatsPitcherPartido(pitchersArr, fecha, partidoStr, bateadoresEquipo) {
+  // Total outs de todos los pitchers para calcular proporción
+  const totalOuts = pitchersArr.reduce((s, p) => s + (p.outs || 0), 0);
+
   pitchersArr.forEach(({ nombre, outs }) => {
     if (!pitchers[nombre]) return;
     const p = pitchers[nombre];
 
-    // Si tiene juegos registrados, buscar y restar exactamente
+    // Si tiene juegos registrados, restar exactamente
     if (Array.isArray(p.juegos) && p.juegos.length) {
       const idx = p.juegos.findIndex(j => j.fecha === fecha && j.partido === partidoStr);
       if (idx !== -1) {
@@ -1743,22 +1749,50 @@ function restarStatsPitcherPartido(pitchersArr, fecha, partidoStr) {
       }
     }
 
-    // Fallback: restar proporcionalmente por outs lanzados en este partido
-    // No podemos saber exactamente qué stats corresponden, así que solo restamos los outs
-    p.totalO = Math.max(0, (p.totalO || 0) - (outs || 0));
+    // Fallback: restar proporcionalmente según outs lanzados
+    const ratio = totalOuts > 0 ? (outs || 0) / totalOuts : 0;
+    if (bateadoresEquipo && bateadoresEquipo.length && ratio > 0) {
+      // Calcular totales del equipo contrario en ese partido
+      const totH  = bateadoresEquipo.reduce((s,j) => s+(j.stats[0]+j.stats[1]+j.stats[2]+j.stats[3]), 0);
+      const totHR = bateadoresEquipo.reduce((s,j) => s+j.stats[3], 0);
+      const totBB = bateadoresEquipo.reduce((s,j) => s+j.stats[4], 0);
+      const totK  = bateadoresEquipo.reduce((s,j) => s+j.stats[5], 0);
+      const totER = bateadoresEquipo.reduce((s,j) => s+j.stats[7], 0); // CA = ER
+
+      p.totalH  = Math.max(0, (p.totalH  || 0) - Math.round(totH  * ratio));
+      p.totalHR = Math.max(0, (p.totalHR || 0) - Math.round(totHR * ratio));
+      p.totalBB = Math.max(0, (p.totalBB || 0) - Math.round(totBB * ratio));
+      p.totalK  = Math.max(0, (p.totalK  || 0) - Math.round(totK  * ratio));
+      p.totalO  = Math.max(0, (p.totalO  || 0) - (outs || 0));
+      p.totalER = Math.max(0, (p.totalER || 0) - Math.round(totER * ratio));
+    } else {
+      // Sin datos — solo restar outs
+      p.totalO = Math.max(0, (p.totalO || 0) - (outs || 0));
+    }
   });
 }
 
 function restarStatsJugadorPartido(jugadores, fecha) {
   jugadores.forEach(({ nombre, stats }) => {
     if (!players[nombre]) return;
-    const idx = players[nombre].juegos.findIndex(j => j.fecha === fecha);
-    if (idx === -1) return;
-    // restar las stats de ese juego
-    players[nombre].juegos[idx].stats.forEach((v, i) => {
-      players[nombre].total[i] -= v;
+    if (!Array.isArray(stats)) return;
+
+    // Intentar encontrar el juego exacto por fecha
+    if (Array.isArray(players[nombre].juegos)) {
+      const idx = players[nombre].juegos.findIndex(j => j.fecha === fecha);
+      if (idx !== -1) {
+        players[nombre].juegos[idx].stats.forEach((v, i) => {
+          players[nombre].total[i] = Math.max(0, (players[nombre].total[i] || 0) - v);
+        });
+        players[nombre].juegos.splice(idx, 1);
+        return;
+      }
+    }
+
+    // Fallback: restar directamente las stats del partido (para JSON importados sin juegos[])
+    stats.forEach((v, i) => {
+      players[nombre].total[i] = Math.max(0, (players[nombre].total[i] || 0) - v);
     });
-    players[nombre].juegos.splice(idx, 1);
   });
 }
 
@@ -1766,6 +1800,15 @@ function restarStatsJugadorPartido(jugadores, fecha) {
 // GUARDAR PARTIDO (nuevo o edición)
 // ============================================================
 function guardarPartido() {
+  try {
+    _guardarPartidoImpl();
+  } catch(e) {
+    console.error("Error en guardarPartido:", e);
+    toast("⚠️ Error al guardar: " + e.message);
+  }
+}
+
+function _guardarPartidoImpl() {
   const fecha     = document.getElementById("fecha").value || "Sin fecha";
   const hora      = document.getElementById("hora")?.value || "";
   const fechaHora = hora ? `${fecha} ${hora}` : fecha;
@@ -1794,8 +1837,8 @@ function guardarPartido() {
     const previo = partidos[editandoIdx];
     const prevPartidoStr = `${previo.local} vs ${previo.visitante}`;
     restarStatsJugadorPartido(previo.jugadores, previo.fecha);
-    if (previo.pitVsVisit) restarStatsPitcherPartido(previo.pitVsVisit, previo.fecha, prevPartidoStr);
-    if (previo.pitVsLocal) restarStatsPitcherPartido(previo.pitVsLocal, previo.fecha, prevPartidoStr);
+    if (previo.pitVsVisit) restarStatsPitcherPartido(previo.pitVsVisit, previo.fecha, prevPartidoStr, previo.jugVisitante || []);
+    if (previo.pitVsLocal) restarStatsPitcherPartido(previo.pitVsLocal, previo.fecha, prevPartidoStr, previo.jugLocal    || []);
   }
 
   // Acumular bateo
@@ -1837,13 +1880,22 @@ function guardarPartido() {
   }
 
   // Construir objeto partido con marcador
+  // Solo guardar entradas que realmente se jugaron
+  const gridV = {}, gridL = {};
+  for (let i = 1; i <= 7; i++) {
+    if (carrerasGrid.visitante[i] !== undefined) gridV[i] = carrerasGrid.visitante[i];
+    if (carrerasGrid.local[i]     !== undefined) gridL[i] = carrerasGrid.local[i];
+  }
+
   const partido = {
     fecha: fechaHora, local: localNom, visitante: visitNom,
     jugadores: todosJugadores,
     jugVisitante: bateadoresVisit,
     jugLocal: bateadoresLocal,
     pitVsVisit: pitVsVisitFinal, pitVsLocal: pitVsLocalFinal,
-    carrerasVisitante: cV, carrerasLocal: cL, ganador
+    carrerasVisitante: cV, carrerasLocal: cL, ganador,
+    gridVisitante: gridV,
+    gridLocal:     gridL
   };
 
   if (editandoIdx >= 0) {
@@ -2377,8 +2429,47 @@ function cargarStatsPartidos() {
       ? `🏆 ${p.local}`
       : "";
 
+    // Scoreboard — siempre mostrar score final, detalle por inning si existe
+    let scoreboardHTML = "";
+    if (p.gridVisitante && p.gridLocal) {
+      const gV = p.gridVisitante || {};
+      const gL = p.gridLocal     || {};
+      // Solo mostrar entradas que se jugaron (tienen valor definido)
+      const jugadas = [1,2,3,4,5,6,7].filter(i => gV[i] !== undefined || gL[i] !== undefined);
+      const maxInn  = jugadas.length ? Math.max(...jugadas) : 5;
+      let hdrs = "", rowV = "", rowL = "";
+      for (let i = 1; i <= maxInn; i++) {
+        const cv = gV[i] ?? "·";
+        const cl = gL[i] ?? "·";
+        hdrs += `<th>${i}</th>`;
+        rowV += `<td class="${cv>0?'sb-mini-run':''}">${cv}</td>`;
+        rowL += `<td class="${cl>0?'sb-mini-run':''}">${cl}</td>`;
+      }
+      scoreboardHTML = `
+        <div class="sb-mini-wrap">
+          <table class="sb-mini">
+            <thead><tr><th></th>${hdrs}<th class="sb-mini-sep"></th><th>C</th></tr></thead>
+            <tbody>
+              <tr><td class="sb-mini-nom">${p.visitante}</td>${rowV}<td class="sb-mini-sep"></td><td class="sb-mini-total ${p.ganador==='visitante'?'sb-mini-winner':''}">${cV}</td></tr>
+              <tr><td class="sb-mini-nom">${p.local}</td>${rowL}<td class="sb-mini-sep"></td><td class="sb-mini-total ${p.ganador==='local'?'sb-mini-winner':''}">${cL}</td></tr>
+            </tbody>
+          </table>
+        </div>`;
+    } else {
+      scoreboardHTML = `
+        <div class="sb-mini-wrap">
+          <table class="sb-mini">
+            <thead><tr><th></th><th class="sb-mini-sep"></th><th>C</th></tr></thead>
+            <tbody>
+              <tr><td class="sb-mini-nom">${p.visitante}</td><td class="sb-mini-sep"></td><td class="sb-mini-total ${p.ganador==='visitante'?'sb-mini-winner':''}">${cV}</td></tr>
+              <tr><td class="sb-mini-nom">${p.local}</td><td class="sb-mini-sep"></td><td class="sb-mini-total ${p.ganador==='local'?'sb-mini-winner':''}">${cL}</td></tr>
+            </tbody>
+          </table>
+        </div>`;
+    }
+
     card.innerHTML = `
-      <div class="partido-titulo">⚾ ${p.visitante} <span class="partido-score">${cV} — ${cL}</span> ${p.local}</div>
+      ${scoreboardHTML}
       ${ganadorLabel ? `<div class="partido-ganador">${ganadorLabel}</div>` : ""}
       <div class="partido-fecha">📅 ${p.fecha} · ${p.jugadores?.length||0} jugadores</div>
       ${pitInfo ? `<div class="partido-pit">${pitInfo}</div>` : ""}
@@ -2424,8 +2515,9 @@ function eliminarPartido(idx) {
         revertirWL(p.pitVsLocal, p.ganador === "visitante");
       }
       restarStatsJugadorPartido(p.jugadores || [], p.fecha);
-      if (p.pitVsVisit) restarStatsPitcherPartido(p.pitVsVisit, p.fecha, partidoStr);
-      if (p.pitVsLocal) restarStatsPitcherPartido(p.pitVsLocal, p.fecha, partidoStr);
+      // pasar bateadores del equipo contrario para recalcular stats de pitcheo
+      if (p.pitVsVisit) restarStatsPitcherPartido(p.pitVsVisit, p.fecha, partidoStr, p.jugVisitante || []);
+      if (p.pitVsLocal) restarStatsPitcherPartido(p.pitVsLocal, p.fecha, partidoStr, p.jugLocal    || []);
       partidos.splice(idx, 1);
       guardarStorage();
       cargarStatsPartidos();
