@@ -253,85 +253,17 @@ input:focus, select:focus {
   -webkit-overflow-scrolling: touch;
 }
 
-.game-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  min-width: 340px;
-}
 
-.game-table col.col-j { width: 90px; }
-.game-table col.col-x { width: 32px; }
-.game-table col       { width: auto; }
 
-.game-table thead tr {
-  background: var(--acento3);
-  color: var(--crema);
-}
 
-.game-table th {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  padding: 8px 2px;
-  text-align: center;
-  white-space: nowrap;
-  overflow: hidden;
-}
 
-.game-table th:first-child {
-  text-align: left;
-  padding-left: 10px;
-}
 
-.game-table tbody tr {
-  cursor: pointer;
-  transition: background 0.12s;
-  display: table-row;
-}
 
-.game-table tbody tr:hover  { background: #f2ede4; }
-.game-table tbody tr.activo { background: #ebe3d3 !important; }
 
-.game-table td {
-  border-bottom: 1px solid #edeae4;
-  text-align: center;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  height: 36px;
-  padding: 0 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: table-cell;
-  vertical-align: middle;
-}
 
-.game-table td:first-child {
-  text-align: left;
-  padding-left: 10px;
-  font-family: 'Barlow', sans-serif;
-  font-size: 12px;
-  font-weight: 700;
-}
 
-.game-table td:last-child { text-align: center; padding: 0; }
 
-.game-table td button {
-  width: 100%;
-  height: 100%;
-  border: none;
-  background: transparent;
-  color: #ccc;
-  font-size: 12px;
-  cursor: pointer;
-  padding: 0;
-  border-radius: 0;
-}
 
-.game-table td button:active { color: var(--marca); }
 
 /* Keep old table/td rules only for scoreboard and stats tables */
 table { width: 100%; border-collapse: collapse; }
@@ -1040,8 +972,8 @@ button:active { opacity: 0.75; transform: scale(0.97); }
 
 .sb-cell {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 17px;
-  color: #ccc;
+  font-size: 18px;
+  color: #bbb;
   padding: 9px 2px;
   text-align: center;
   border-left: 1px solid #edeae4;
@@ -1049,18 +981,35 @@ button:active { opacity: 0.75; transform: scale(0.97); }
   min-width: 32px;
 }
 
-.sb-cell.sb-tiene-carreras { color: var(--texto); font-weight: 700; }
+/* 0 completado — gris oscuro visible */
+.sb-cell.sb-cell-cero {
+  color: #888;
+  font-size: 16px;
+}
+
+.sb-cell.sb-tiene-carreras {
+  color: var(--texto);
+  font-weight: 700;
+  font-size: 20px;
+}
 
 .sb-cell.sb-cell-activa {
   background: #f5ede3;
   color: var(--acento2);
+  font-size: 18px;
 }
 
 .sb-cell.sb-extra { opacity: 0.4; }
 .sb-cell.sb-extra.sb-tiene-carreras,
+.sb-cell.sb-extra.sb-cell-cero,
 .sb-cell.sb-extra.sb-cell-activa { opacity: 1; }
 
-/* =========================
+/* Header inning activo */
+.sb-inn-activa {
+  color: var(--acento2) !important;
+  font-size: 13px;
+  background: #f5ede3;
+}
    RESPONSIVE / iPAD
 ========================= */
 @media (min-width: 600px) {
@@ -1528,12 +1477,6 @@ button:active { opacity: 0.75; transform: scale(0.97); }
   padding: 0 2px !important;
 }
 
-.game-table .td-acciones {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-}
 
 .btn-sustituir {
   background: none;
@@ -1548,12 +1491,10 @@ button:active { opacity: 0.75; transform: scale(0.97); }
 
 .btn-sustituir:active { opacity: 1; }
 
-.game-table col.col-x { width: 52px; }
 
 /* =========================
    AVE / OPS EN TABLA JUEGO
 ========================= */
-.game-table col.col-av { width: 42px; }
 
 .th-av {
   background: var(--acento2) !important;
@@ -1571,14 +1512,8 @@ button:active { opacity: 0.75; transform: scale(0.97); }
   padding: 0 2px;
 }
 
-.game-table tbody tr {
-  grid-template-columns: 90px repeat(9, 1fr) 42px 42px 52px;
-}
 
 @media (min-width: 600px) {
-  .game-table tbody tr {
-    grid-template-columns: 120px repeat(9, 1fr) 46px 46px 52px;
-  }
 }
 
 /* =========================
@@ -1654,3 +1589,268 @@ button:active { opacity: 0.75; transform: scale(0.97); }
   font-weight: 700;
   cursor: pointer;
 }
+
+/* Orden al bate automático — filas no clickeables */
+
+
+/* =========================
+   DETALLE POR INNING
+========================= */
+.tr-inning-detalle td.td-inning-detalle {
+  background: #f7f3ec;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--borde);
+  font-size: 12px;
+  display: table-cell;
+  text-align: left;
+  height: auto;
+  white-space: normal;
+}
+
+/* Indicar que el nombre es expandible */
+
+
+/* =========================
+
+.th-inn {
+  background: #3d4f3a !important;
+  color: var(--crema) !important;
+  font-size: 9px !important;
+  letter-spacing: 0px !important;
+}
+
+.th-inn-extra { opacity: 0.6; }
+
+.td-inn {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  padding: 0 1px;
+  border-left: 1px solid #edeae4;
+  color: var(--suave);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.td-inn-extra { opacity: 0.5; }
+.td-inn-extra:not(:empty) { opacity: 1; }
+
+/* Colores por tipo de jugada */
+.td-inn-hr { color: var(--acento2); font-size: 13px; }
+.td-inn-ca { color: var(--acento); }
+.td-inn-out { color: #888; }
+.td-inn-bb { color: var(--acento3); }
+.td-inn-hit { color: var(--acento3); font-weight: 900; }
+
+
+/* =========================
+
+
+
+@media (min-width: 600px) {
+}
+
+/* =========================
+   PARTIDO CARD CON MARCADOR
+========================= */
+.partido-score {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 20px;
+  color: var(--texto);
+  letter-spacing: 2px;
+  margin: 0 6px;
+}
+
+.partido-ganador {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--acento2);
+  margin: 2px 0 4px;
+}
+
+
+/* =========================================
+   TABLA DEL PARTIDO — versión definitiva
+   Una sola fila por jugador, sin ambigüedad
+   Columnas: Jugador | E1..E7 | AVE | OPS | acciones
+========================================= */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 10px 12px;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+}
+
+.game-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 460px;
+  background: var(--blanco);
+}
+
+/* Anchos fijos */
+.game-table col.col-j   { width: 130px; }
+.game-table col.col-inn { width: 36px;  }
+.game-table col.col-av  { width: 46px;  }
+.game-table col.col-x   { width: 50px;  }
+
+/* HEADER */
+.game-table thead tr {
+  background: var(--acento3);
+  display: table-row;
+}
+
+.game-table th {
+  display: table-cell;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--crema);
+  padding: 7px 2px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.game-table th:first-child {
+  text-align: left;
+  padding-left: 10px;
+}
+
+/* BODY ROWS — una sola fila por jugador */
+.game-table tbody tr {
+  display: table-row;
+  border-bottom: 1px solid #edeae4;
+  background: var(--blanco);
+}
+
+.game-table tbody tr:nth-child(odd) { background: #faf8f4; }
+.game-table tbody tr.activo {
+  background: #ebe3d3 !important;
+  border-left: 3px solid var(--acento2);
+}
+
+/* CELDAS */
+.game-table td {
+  display: table-cell;
+  height: 40px;
+  padding: 0 2px;
+  text-align: center;
+  vertical-align: middle;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: none;
+}
+
+.game-table td:first-child {
+  text-align: left;
+  padding-left: 10px;
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: default;
+}
+
+/* Acciones — en la misma fila */
+.game-table .td-acciones {
+  display: table-cell;
+  vertical-align: middle;
+  text-align: right;
+  padding-right: 4px;
+  white-space: nowrap;
+}
+
+.game-table .td-acciones button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: #ccc;
+  padding: 4px 3px;
+  width: auto;
+  vertical-align: middle;
+}
+
+.game-table .td-acciones button:active { color: var(--marca); }
+
+.btn-sustituir {
+  color: var(--acento3) !important;
+  opacity: 0.6;
+}
+.btn-sustituir:active { opacity: 1 !important; }
+
+/* OPS */
+.game-table .td-ops {
+  color: var(--acento3);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* AVE */
+.game-table .stat-av {
+  color: var(--suave);
+  font-size: 11px;
+}
+
+/* Headers especiales */
+.th-av  { background: var(--acento2) !important; color: var(--crema) !important; font-size: 10px !important; }
+.th-inn { background: #3d5c3a !important; color: var(--crema) !important; font-size: 10px !important; }
+.th-inn-extra { opacity: 0.7; }
+
+/* Columnas de inning */
+.game-table .td-inn {
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #444;
+  border-left: 1px solid #edeae4;
+}
+
+.game-table .td-inn-extra { opacity: 0.4; }
+.game-table .td-inn-extra:not(:empty) { opacity: 1; }
+
+/* Colores por tipo de jugada — con !important para sobrescribir td-inn base */
+.td-inn-hr  { color: var(--acento2) !important; font-weight: 900; }
+.td-inn-ca  { color: var(--acento)  !important; }
+.td-inn-ci  { color: #9b59b6       !important; font-weight: 700; }
+.td-inn-out { color: #888           !important; }
+.td-inn-bb  { color: var(--acento3) !important; }
+.td-inn-hit { color: var(--acento3) !important; font-weight: 900; }
+
+.td-inn-ci { color: #9b59b6; font-weight: 700; }
+
+/* =========================
+   LEYENDA DE JUGADAS
+========================= */
+.leyenda-jugadas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 10px 14px;
+  margin: 0 10px 8px;
+  background: #f0ece3;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
+}
+
+.leyenda-jugadas span {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--suave);
+  letter-spacing: 0.3px;
+}
+
+.leyenda-jugadas span:nth-child(4) { color: var(--acento2); }  /* HR */
+.leyenda-jugadas span:nth-child(8) { color: var(--acento); }   /* CA */
+.leyenda-jugadas span:nth-child(9) { color: #9b59b6; }         /* CI */

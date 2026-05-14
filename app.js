@@ -87,8 +87,10 @@ function restaurarEstadoPartido() {
   if (!estado || !estado.juegoIniciado) return; // no había partido en curso
 
   // Rellenar campos de texto
-  if (document.getElementById("local"))     document.getElementById("local").value     = estado.local     || "";
-  if (document.getElementById("visitante")) document.getElementById("visitante").value = estado.visitante || "";
+  const localEl = document.getElementById("local");
+  const visitEl = document.getElementById("visitante");
+  if (localEl)  localEl.value  = estado.local     || "";
+  if (visitEl)  visitEl.value  = estado.visitante || "";
   if (document.getElementById("fecha"))     document.getElementById("fecha").value     = estado.fecha     || "";
 
   // Restaurar marcador y grids
@@ -107,6 +109,13 @@ function restaurarEstadoPartido() {
       const tr = document.createElement("tr");
       tr.innerHTML = `<td>${nombre}</td>` +
         stats.map(v => `<td class="stat">${v}</td>`).join("") +
+        `<td class="td-inn" data-inn="1"></td>` +
+        `<td class="td-inn" data-inn="2"></td>` +
+        `<td class="td-inn" data-inn="3"></td>` +
+        `<td class="td-inn" data-inn="4"></td>` +
+        `<td class="td-inn" data-inn="5"></td>` +
+        `<td class="td-inn td-inn-extra" data-inn="6"></td>` +
+        `<td class="td-inn td-inn-extra" data-inn="7"></td>` +
         `<td class="stat-av td-ave">.000</td>` +
         `<td class="stat-av td-ops">.000</td>` +
         `<td class="td-acciones"><button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button><button onclick="this.closest('tr').remove()">✕</button></td>`;
@@ -150,6 +159,7 @@ function restaurarEstadoPartido() {
   // Mostrar/ocultar botones
   document.getElementById("btnIniciarJuego").style.display = "none";
   document.getElementById("btnGuardar").style.display = "block";
+  document.getElementById("btnNuevoPartido").style.display = "block";
 
   // Actualizar UI
   cargarSelects();
@@ -198,12 +208,9 @@ function mostrarTabStats(tab, btn) {
 document.addEventListener("click", (e) => {
   const fila = e.target.closest("tr");
   if (!fila || fila.parentElement.tagName !== "TBODY") return;
-  // Detectar de qué tabla viene
   const enVisitante = fila.closest("#tablaVisitante");
   const enLocal     = fila.closest("#tablaLocal");
-  if (!enVisitante && !enLocal) return; // ignorar clicks en tablas de stats
-  const tablaId = enVisitante ? "#tablaVisitante" : "#tablaLocal";
-  seleccionarFila(fila, tablaId);
+  if (enVisitante || enLocal) return; // orden al bate automático, sin selección manual
 });
 
 // ============================================================
@@ -284,9 +291,16 @@ function agregarJugadorDesdeLista(equipo) {
     return toast("⚠️ Jugador ya está en este juego");
 
   const tr = document.createElement("tr");
+  tr.dataset.nombre = nombre;
   tr.innerHTML = `
     <td>${nombre}</td>
-    ${Array(9).fill('<td class="stat">0</td>').join("")}
+    <td class="td-inn" data-inn="1"></td>
+    <td class="td-inn" data-inn="2"></td>
+    <td class="td-inn" data-inn="3"></td>
+    <td class="td-inn" data-inn="4"></td>
+    <td class="td-inn" data-inn="5"></td>
+    <td class="td-inn td-inn-extra" data-inn="6"></td>
+    <td class="td-inn td-inn-extra" data-inn="7"></td>
     <td class="stat-av td-ave">.000</td>
     <td class="stat-av td-ops">.000</td>
     <td class="td-acciones">
@@ -313,6 +327,64 @@ function seleccionarFila(fila, tablaId) {
   tablaActiva         = tablaId;
   actualizarStatsEnVivo();
   fila.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function actualizarDetalleInning(nombre, _unused) {
+  // No se usa — mantenido por compatibilidad
+}
+
+// Actualiza las celdas E1-E7 de todos los jugadores en la tabla
+function actualizarDetallesVisibles() {
+  const porJugador = {};
+  inningLog.forEach(({ nombre, inning, jugada }) => {
+    if (!porJugador[nombre]) porJugador[nombre] = {};
+    if (!porJugador[nombre][inning]) porJugador[nombre][inning] = [];
+    porJugador[nombre][inning].push(jugada);
+  });
+
+  ["#tablaVisitante","#tablaLocal"].forEach(tablaId => {
+    document.querySelectorAll(`${tablaId} tbody tr[data-nombre]`).forEach(tr => {
+      const nombre = tr.dataset.nombre;
+      const jugadasNombre = porJugador[nombre] || {};
+      for (let inn = 1; inn <= 7; inn++) {
+        const celda = tr.querySelector(`.td-inn[data-inn="${inn}"]`);
+        if (!celda) continue;
+        const jugadas = jugadasNombre[inn] || [];
+        if (!jugadas.length) { celda.textContent = ""; celda.title = ""; celda.className = `td-inn${inn >= 6 ? " td-inn-extra" : ""}`; continue; }
+
+        // Agrupar por tipo y contar
+        const conteo = {};
+        jugadas.forEach(j => conteo[j] = (conteo[j] || 0) + 1);
+
+        // Construir texto: mostrar cantidad si >1
+        const partes = Object.entries(conteo).map(([j, n]) =>
+          n > 1 ? `${jugadaSimbolo(j)}×${n}` : jugadaSimbolo(j)
+        );
+
+        celda.textContent = partes.join(" ");
+        celda.title = jugadas.join(", ");
+
+        // Color basado en la jugada más importante
+        const prioridad = ["HR","1B","2B","3B","BB","CA","CI","K","O"];
+        const principal = prioridad.find(p => conteo[p]) || jugadas[0];
+        celda.className = `td-inn${inn >= 6 ? " td-inn-extra" : ""} td-inn-${jugadaClase(principal)}`;
+      }
+    });
+  });
+}
+
+function jugadaSimbolo(j) {
+  const m = { "1B":"1","2B":"2","3B":"3","HR":"⬟","BB":"B","K":"K","O":"O","CA":"✦","CI":"◆" };
+  return m[j] || j;
+}
+
+function jugadaClase(j) {
+  if (j === "HR") return "hr";
+  if (j === "CA") return "ca";
+  if (j === "CI") return "ci";
+  if (j === "K" || j === "O") return "out";
+  if (j === "BB") return "bb";
+  return "hit";
 }
 
 function actualizarStatsEnVivo() {
@@ -374,25 +446,38 @@ let lineupPos = { visitante: 0, local: 0 };
 
 function siguienteBateador() {
   const tablaId = marcador.turno === "visitante" ? "#tablaVisitante" : "#tablaLocal";
-  const filas = [...document.querySelectorAll(`${tablaId} tbody tr`)];
+  const filas = [...document.querySelectorAll(`${tablaId} tbody tr[data-nombre]`)];
   if (!filas.length) return;
 
   if (!jugadorSeleccionado || tablaActiva !== tablaId) {
-    // Retomar desde la posición guardada del equipo
-    const pos = lineupPos[marcador.turno] % filas.length;
+    // Retomar desde la posición guardada (ya apunta al correcto)
+    const pos = (lineupPos[marcador.turno] || 0) % filas.length;
     seleccionarFila(filas[pos], tablaId);
     return;
   }
 
   const idx  = filas.indexOf(jugadorSeleccionado);
   const next = (idx + 1) % filas.length;
-  lineupPos[marcador.turno] = next; // guardar posición
+  lineupPos[marcador.turno] = next; // guardar quién batea ahora
   seleccionarFila(filas[next], tablaId);
 }
 
 // ============================================================
 // INICIO DE JUEGO
 // ============================================================
+function nuevoPartidoSinGuardar() {
+  confirmar(
+    "🗑 Nuevo partido",
+    "¿Descartar el partido en curso? Las estadísticas no se guardarán.",
+    () => {
+      limpiarEstadoPartido();
+      resetJuego();
+      cargarSelects();
+      toast("🗑 Partido descartado — listo para nuevo partido");
+    }
+  );
+}
+
 function iniciarJuego() {
   const filasVisit = [...document.querySelectorAll("#tablaVisitante tbody tr")];
   const filasLocal = [...document.querySelectorAll("#tablaLocal tbody tr")];
@@ -414,6 +499,7 @@ function iniciarJuego() {
   seleccionarFila(filasVisit[0], "#tablaVisitante");
   document.getElementById("btnIniciarJuego").style.display = "none";
   document.getElementById("btnGuardar").style.display = "block";
+  document.getElementById("btnNuevoPartido").style.display = "block";
   toast(`⚾ ¡Juego iniciado! Al bate: ${filasVisit[0].children[0].textContent}`, 3000);
 }
 
@@ -467,19 +553,33 @@ function actualizarMarcadorUI() {
   actualizarPitcherActivoUI();
   let totalV = 0, totalL = 0;
   for (let i = 1; i <= 7; i++) {
-    const cv = carrerasGrid.visitante[i];
-    const cl = carrerasGrid.local[i];
-    const celdaV = document.getElementById("v" + i);
-    const celdaL = document.getElementById("l" + i);
+    const cv = carrerasGrid.visitante[i] || 0;
+    const cl = carrerasGrid.local[i]     || 0;
+    const celdaV  = document.getElementById("v" + i);
+    const celdaL  = document.getElementById("l" + i);
+    const header  = document.getElementById("sbh" + i);
+
+    // Entrada jugada = inning ya pasó, o es el actual con outs registrados
+    const entradaJugadaV = i < marcador.inning || (i === marcador.inning && marcador.turno === "local") || (i === marcador.inning && marcador.turno === "visitante" && marcador.outs > 0);
+    const entradaJugadaL = i < marcador.inning || (i === marcador.inning && marcador.outs > 0 && marcador.turno === "local");
+    const esActualV = i === marcador.inning && marcador.turno === "visitante";
+    const esActualL = i === marcador.inning && marcador.turno === "local";
+    const esFutura  = i > marcador.inning;
+
     if (celdaV) {
-      celdaV.textContent = cv > 0 ? cv : "·";
-      celdaV.classList.toggle("sb-cell-activa", i === marcador.inning && marcador.turno === "visitante");
+      celdaV.textContent = esFutura ? "·" : cv;
+      celdaV.classList.toggle("sb-cell-activa",  esActualV);
+      celdaV.classList.toggle("sb-cell-cero",    !esFutura && cv === 0 && !esActualV);
       celdaV.classList.toggle("sb-tiene-carreras", cv > 0);
     }
     if (celdaL) {
-      celdaL.textContent = cl > 0 ? cl : "·";
-      celdaL.classList.toggle("sb-cell-activa", i === marcador.inning && marcador.turno === "local");
+      celdaL.textContent = esFutura ? "·" : cl;
+      celdaL.classList.toggle("sb-cell-activa",  esActualL);
+      celdaL.classList.toggle("sb-cell-cero",    !esFutura && cl === 0 && !esActualL);
       celdaL.classList.toggle("sb-tiene-carreras", cl > 0);
+    }
+    if (header) {
+      header.classList.toggle("sb-inn-activa", i === marcador.inning);
     }
     totalV += cv;
     totalL += cl;
@@ -507,13 +607,14 @@ function cambiarOuts(delta) {
   if (marcador.outs === 3) {
     const equipoSale = marcador.turno;
     const tablaIdSale = equipoSale === "visitante" ? "#tablaVisitante" : "#tablaLocal";
-    const filasSale = [...document.querySelectorAll(`${tablaIdSale} tbody tr`)];
+    const filasSale = [...document.querySelectorAll(`${tablaIdSale} tbody tr[data-nombre]`)];
     if (filasSale.length && jugadorSeleccionado) {
       const idxActual = filasSale.indexOf(jugadorSeleccionado);
+      // Guardar el siguiente bateador (el que abre el próximo inning de este equipo)
       if (idxActual >= 0) lineupPos[equipoSale] = (idxActual + 1) % filasSale.length;
     }
 
-    // Guardar el jugador que hizo el último out (para regla chiller)
+    // El equipo contrario mantiene su posición actual intacta — NO se toca lineupPos del otro equipo
     marcador.ultimoOut = { nombre: jugadorNombre, tablaId: tablaActiva };
 
     setTimeout(() => {
@@ -524,29 +625,34 @@ function cambiarOuts(delta) {
 
       if (!eraTurnoLocal) {
         // Terminó la media entrada del visitante → turno del local
+        // ERROR 1 FIX: verificar si el local puede ganar en la parte baja
+        // (solo aplica en entradas ≥5 donde el visitante va perdiendo)
         marcador.turno = "local";
+        actualizarMarcadorUI();
+        actualizarBasesUI();
+        cambiarEquipoBateador(marcador.turno);
       } else {
-        // Terminó la entrada completa → verificar reglas de término
+        // Terminó la entrada completa
+        // ERROR 1 FIX: verificar ANTES de incrementar el inning
         const accion = verificarTerminoEntrada();
-        if (accion === "fin") return; // partido terminado
-        if (accion === "derby") return; // derby de HR iniciado
+        if (accion === "fin") return;
+        if (accion === "derby") return;
+
+        marcador.inning = Math.min(7, marcador.inning + 1);
+        marcador.turno  = "visitante";
+
         if (accion === "chiller") {
-          // Iniciar inning extra con regla chiller
-          marcador.inning = Math.min(7, marcador.inning + 1);
-          marcador.turno  = "visitante";
           activarReglaChiller();
           actualizarMarcadorUI();
           actualizarBasesUI();
           cambiarEquipoBateador(marcador.turno);
           return;
         }
-        marcador.inning = Math.min(7, marcador.inning + 1);
-        marcador.turno  = "visitante";
-      }
 
-      actualizarMarcadorUI();
-      actualizarBasesUI();
-      cambiarEquipoBateador(marcador.turno);
+        actualizarMarcadorUI();
+        actualizarBasesUI();
+        cambiarEquipoBateador(marcador.turno);
+      }
     }, 800);
   }
 }
@@ -554,9 +660,8 @@ function cambiarOuts(delta) {
 // ============================================================
 // REGLAS DE TÉRMINO DEL PARTIDO
 // ============================================================
-// Fase: "normal" | "extra" | "derby"
 let fasePartido = "normal";
-let derbyState  = null; // estado del derby de HR
+let derbyState  = null;
 
 function totalesCarreras() {
   const cV = Object.values(carrerasGrid.visitante).reduce((s,v) => s+v, 0);
@@ -565,16 +670,16 @@ function totalesCarreras() {
 }
 
 function verificarTerminoEntrada() {
+  // Se llama AL TERMINAR la entrada completa (local hizo 3 outs)
+  // marcador.inning aún tiene el número de la entrada que ACABA de terminar
   const { cV, cL } = totalesCarreras();
-  const inn = marcador.inning;
+  const inn = marcador.inning; // entrada que acaba de terminar
 
   if (inn === 5 && fasePartido === "normal") {
     if (cV !== cL) {
-      // Hay ganador al 5° inning → terminar
       mostrarGanador(cV > cL ? "VISITANTE" : "LOCAL", cV, cL, "5° inning");
       return "fin";
     } else {
-      // Empate → 2 innings extras con regla chiller
       fasePartido = "extra";
       toast("⚾ Empate al 5° inning — 2 innings extras con regla chiller", 4000);
       return "chiller";
@@ -586,7 +691,6 @@ function verificarTerminoEntrada() {
       mostrarGanador(cV > cL ? "VISITANTE" : "LOCAL", cV, cL, "innings extras");
       return "fin";
     } else {
-      // Sigue empatado → derby de HR
       fasePartido = "derby";
       setTimeout(() => iniciarDerby(), 600);
       return "derby";
@@ -746,23 +850,20 @@ function derbySiguienteBateador() {
 // Cambia al equipo correcto y selecciona el bateador según posición guardada del lineup
 function cambiarEquipoBateador(turno) {
   const tablaId = turno === "visitante" ? "#tablaVisitante" : "#tablaLocal";
-  const filas = [...document.querySelectorAll(`${tablaId} tbody tr`)];
+  const filas = [...document.querySelectorAll(`${tablaId} tbody tr[data-nombre]`)];
   if (!filas.length) {
-    jugadorSeleccionado = null;
-    jugadorNombre = null;
-    tablaActiva = null;
+    jugadorSeleccionado = null; jugadorNombre = null; tablaActiva = null;
     const jA = document.getElementById("jugadorActivo");
     jA.textContent = `⚾ Turno: ${turno === "visitante" ? "VISITANTE" : "LOCAL"} — sin jugadores`;
     jA.classList.add("activo-global");
     return;
   }
 
-  // Continuar desde la posición guardada del lineup de este equipo
   const pos  = (lineupPos[turno] || 0) % filas.length;
   const fila = filas[pos];
   seleccionarFila(fila, tablaId);
 
-  const nombre = fila.children[0].textContent;
+  const nombre = fila.dataset.nombre || fila.children[0].textContent;
   const msg = turno === "local"
     ? `⚾ 3 outs — Turno LOCAL · Al bate: ${nombre}`
     : `⚾ 3 outs — Entrada ${marcador.inning} · Al bate: ${nombre}`;
@@ -1121,31 +1222,45 @@ function cerrarSelectorJugador() {
 }
 
 function confirmarJugada() {
-  // 1. Aplicar bases propuestas (las que el usuario editó)
+  // Actualizar snapshot del historial con el estado post-modal
+  // (CA, CI, outs adicionales aún no aplicados)
+  if (historialJugadas.length) {
+    historialJugadas[historialJugadas.length - 1].snapPostModal = snapshotJugada();
+  }
+
+  // 1. Aplicar bases propuestas
   bases = { ..._mj.basesPropoestas };
   actualizarBasesUI();
 
-  // 2. Outs adicionales (doble play, corredor cogido)
-  if (_mj.outsExtra > 0) {
-    cambiarOuts(_mj.outsExtra);
-  }
+  // 2. Outs adicionales
+  if (_mj.outsExtra > 0) cambiarOuts(_mj.outsExtra);
 
-  // 3. CA individual por cada corredor que anotó
+  // 3. CA individual
   _mj.anotadores.forEach(a => {
-    const celdas = a.fila.querySelectorAll(".stat");
-    if (celdas[7]) celdas[7].textContent = (parseInt(celdas[7].textContent) || 0) + 1;
+    let s = JSON.parse(a.fila.dataset.stats || "[0,0,0,0,0,0,0,0,0]");
+    s[7] = (s[7] || 0) + 1;
+    a.fila.dataset.stats = JSON.stringify(s);
+    actualizarOPSFila(a.fila, s);
     registrarCarreraEnMarcador(1);
+    inningLog.push({ nombre: a.nombre, inning: marcador.inning, jugada: "CA" });
   });
 
   // 4. CI al bateador
   if (_mj.ci > 0 && _mj.bateadorFila) {
-    const celdas = _mj.bateadorFila.querySelectorAll(".stat");
-    if (celdas[8]) celdas[8].textContent = (parseInt(celdas[8].textContent) || 0) + _mj.ci;
+    let s = JSON.parse(_mj.bateadorFila.dataset.stats || "[0,0,0,0,0,0,0,0,0]");
+    s[8] = (s[8] || 0) + _mj.ci;
+    _mj.bateadorFila.dataset.stats = JSON.stringify(s);
+    actualizarOPSFila(_mj.bateadorFila, s);
+    // Registrar CI en inningLog
+    for (let c = 0; c < _mj.ci; c++) {
+      inningLog.push({ nombre: _mj.bateadorNombre, inning: marcador.inning, jugada: "CI" });
+    }
   }
 
   document.getElementById("modalJugada").style.display = "none";
   actualizarStatsEnVivo();
-  setTimeout(siguienteBateador, 150);
+  actualizarDetallesVisibles();
+  if (marcador.outs < 3) setTimeout(siguienteBateador, 150);
   guardarEstadoPartido();
 }
 
@@ -1193,51 +1308,145 @@ function resetMarcador() {
 // ============================================================
 // HISTORIAL PARA DESHACER
 // ============================================================
+// inningLog: registra cada jugada con su inning
+let inningLog = [];
+const NOMBRES_JUGADA_CORTO = ["1B","2B","3B","HR","BB","K","O","CA","CI"];
 let historialJugadas = [];
+
+function snapshotJugada() {
+  // Captura el estado completo antes de cada jugada para poder revertir totalmente
+  const statsSnapshot = {};
+  ["#tablaVisitante","#tablaLocal"].forEach(tablaId => {
+    document.querySelectorAll(`${tablaId} tbody tr[data-nombre]`).forEach(tr => {
+      statsSnapshot[tr.dataset.nombre] = tr.dataset.stats || "[0,0,0,0,0,0,0,0,0]";
+    });
+  });
+  return {
+    stats:        statsSnapshot,
+    outs:         marcador.outs,
+    inning:       marcador.inning,
+    turno:        marcador.turno,
+    carrerasGrid: JSON.parse(JSON.stringify(carrerasGrid)),
+    bases:        JSON.parse(JSON.stringify({ 
+      1: bases[1] ? { nombre: bases[1].nombre } : null,
+      2: bases[2] ? { nombre: bases[2].nombre } : null,
+      3: bases[3] ? { nombre: bases[3].nombre } : null,
+    })),
+    inningLogLen:    inningLog.length,
+    jugadorNombre:   jugadorNombre,
+    tablaActiva:     tablaActiva,
+    lineupPos:       { ...lineupPos },
+    jugadorSelNombre: jugadorSeleccionado?.dataset?.nombre || null,
+  };
+}
 
 function registrar(i) {
   if (!jugadorSeleccionado) return toast("⚠️ Selecciona un bateador");
-  const celdas = jugadorSeleccionado.querySelectorAll(".stat");
-  if (!celdas[i]) return;
-  const valorAnterior = parseInt(celdas[i].textContent) || 0;
-  celdas[i].textContent = valorAnterior + 1;
 
-  historialJugadas.push({ fila: jugadorSeleccionado, nombre: jugadorNombre, idx: i, valorAnterior, outsAntes: marcador.outs });
+  // Snapshot completo ANTES de cualquier cambio
+  const snap = snapshotJugada();
+
+  // Stats guardadas en dataset.stats como JSON
+  let stats = JSON.parse(jugadorSeleccionado.dataset.stats || "[0,0,0,0,0,0,0,0,0]");
+  stats[i] = (stats[i] || 0) + 1;
+  jugadorSeleccionado.dataset.stats = JSON.stringify(stats);
+
+  // Guardar en inningLog
+  inningLog.push({ nombre: jugadorNombre, inning: marcador.inning, jugada: NOMBRES_JUGADA_CORTO[i] || "?" });
+
+  // historial con snapshot completo
+  historialJugadas.push({ snap, fila: jugadorSeleccionado, nombre: jugadorNombre, idx: i, tablaId: tablaActiva });
   if (historialJugadas.length > 20) historialJugadas.shift();
 
-  if (i < 4) actualizarHits();
+  // Actualizar OPS en tiempo real
+  actualizarOPSFila(jugadorSeleccionado, stats);
 
-  if (i === 5) { // K — solo out, sin modal
+  if (i === 5) { // K — out, sin modal
     cambiarOuts(1);
-    setTimeout(siguienteBateador, 250);
+    // Solo avanzar bateador si NO fue el 3er out (el cambio de turno ya selecciona el siguiente)
+    if (marcador.outs < 3) setTimeout(siguienteBateador, 250);
     setTimeout(guardarEstadoPartido, 900);
-    actualizarStatsEnVivo();
+    actualizarStatsEnVivo(stats);
+    actualizarDetallesVisibles();
     return;
   }
 
   if (i === 6) { // O — out + modal
     cambiarOuts(1);
-    setTimeout(() => abrirModalJugada(i), 200);
-    actualizarStatsEnVivo();
+    if (marcador.outs < 3) setTimeout(() => abrirModalJugada(i), 200);
+    else setTimeout(guardarEstadoPartido, 900);
+    actualizarStatsEnVivo(stats);
+    actualizarDetallesVisibles();
     return;
   }
 
-  // 1B,2B,3B,HR,BB → modal
   setTimeout(() => abrirModalJugada(i), 200);
-  actualizarStatsEnVivo();
+  actualizarStatsEnVivo(stats);
+  actualizarDetallesVisibles();
+}
+
+function actualizarOPSFila(fila, stats) {
+  const s = stats || JSON.parse(fila.dataset.stats || "[0,0,0,0,0,0,0,0,0]");
+  const H = s[0]+s[1]+s[2]+s[3], BB = s[4], AB = H+s[5]+s[6];
+  const TB = s[0]+2*s[1]+3*s[2]+4*s[3];
+  const OPS = (AB+BB) ? ((H+BB)/(AB+BB) + (AB ? TB/AB : 0)).toFixed(3) : ".000";
+  const tdOps = fila.querySelector(".td-ops");
+  if (tdOps) tdOps.textContent = OPS;
 }
 
 function deshacerUltimaJugada() {
   if (!historialJugadas.length) return toast("⚠️ No hay jugadas para deshacer");
   const j = historialJugadas.pop();
-  const celdas = j.fila.querySelectorAll(".stat");
-  if (celdas[j.idx]) celdas[j.idx].textContent = j.valorAnterior;
-  if (j.idx === 5 || j.idx === 6) cambiarOuts(-1);
-  document.querySelectorAll("tbody tr").forEach(r => r.classList.remove("activo"));
-  j.fila.classList.add("activo");
-  jugadorSeleccionado = j.fila;
-  jugadorNombre = j.nombre;
-  actualizarHits();
+
+  // Usar el snapshot PRE-jugada para restaurar todo
+  const snap = j.snap;
+
+  // 1. Restaurar stats de todos los jugadores desde snapshot
+  ["#tablaVisitante","#tablaLocal"].forEach(tablaId => {
+    document.querySelectorAll(`${tablaId} tbody tr[data-nombre]`).forEach(tr => {
+      const nombre = tr.dataset.nombre;
+      if (snap.stats[nombre] !== undefined) {
+        tr.dataset.stats = snap.stats[nombre];
+        actualizarOPSFila(tr);
+      }
+    });
+  });
+
+  // 2. Restaurar marcador completo
+  marcador.outs   = snap.outs;
+  marcador.inning = snap.inning;
+  marcador.turno  = snap.turno;
+
+  // 3. Restaurar carrerasGrid
+  Object.assign(carrerasGrid.visitante, snap.carrerasGrid.visitante);
+  Object.assign(carrerasGrid.local,     snap.carrerasGrid.local);
+
+  // 4. Restaurar bases
+  [1,2,3].forEach(n => {
+    const b = snap.bases[n];
+    if (!b) { bases[n] = null; return; }
+    const fila = [...document.querySelectorAll("#tablaVisitante tbody tr[data-nombre], #tablaLocal tbody tr[data-nombre]")]
+      .find(tr => tr.dataset.nombre === b.nombre);
+    bases[n] = fila ? { nombre: b.nombre, fila } : null;
+  });
+
+  // 5. Restaurar inningLog
+  inningLog.splice(snap.inningLogLen);
+
+  // 6. Restaurar lineup position y bateador seleccionado
+  lineupPos.visitante = snap.lineupPos.visitante;
+  lineupPos.local     = snap.lineupPos.local;
+
+  // Re-seleccionar el bateador que estaba activo antes de la jugada
+  if (snap.jugadorSelNombre && snap.tablaActiva) {
+    const fila = [...document.querySelectorAll(`${snap.tablaActiva} tbody tr[data-nombre]`)]
+      .find(tr => tr.dataset.nombre === snap.jugadorSelNombre);
+    if (fila) seleccionarFila(fila, snap.tablaActiva);
+  }
+
+  actualizarMarcadorUI();
+  actualizarBasesUI();
+  actualizarDetallesVisibles();
   actualizarStatsEnVivo();
   guardarEstadoPartido();
   toast(`↩ Deshecho: ${j.nombre}`);
@@ -1451,9 +1660,9 @@ function guardarNombreJugador(nombreAnterior) {
 // LEER FILAS DE BATEADORES
 // ============================================================
 function leerBateadores(tablaId) {
-  return [...document.querySelectorAll(`${tablaId} tbody tr`)].map(tr => ({
+  return [...document.querySelectorAll(`${tablaId} tbody tr[data-nombre]`)].map(tr => ({
     nombre: tr.children[0].textContent,
-    stats:  [...tr.querySelectorAll(".stat")].map(td => parseInt(td.textContent) || 0)
+    stats:  JSON.parse(tr.dataset.stats || "[0,0,0,0,0,0,0,0,0]")
   }));
 }
 
@@ -1514,21 +1723,29 @@ function _sumarPitcher(nombre, s, fecha, partidoStr) {
 
 // Inverso: restar stats de un partido previo
 function restarStatsPitcherPartido(pitchersArr, fecha, partidoStr) {
-  // Busca en pitchers[nombre].juegos el juego con esa fecha+partido y lo resta
-  pitchersArr.forEach(({ nombre }) => {
+  pitchersArr.forEach(({ nombre, outs }) => {
     if (!pitchers[nombre]) return;
-    const idx = pitchers[nombre].juegos.findIndex(
-      j => j.fecha === fecha && j.partido === partidoStr
-    );
-    if (idx === -1) return;
-    const j = pitchers[nombre].juegos[idx];
-    pitchers[nombre].totalH  -= j.H;
-    pitchers[nombre].totalHR -= j.HR;
-    pitchers[nombre].totalBB -= j.BB;
-    pitchers[nombre].totalK  -= j.K;
-    pitchers[nombre].totalO  -= j.O;
-    pitchers[nombre].totalER -= j.ER;
-    pitchers[nombre].juegos.splice(idx, 1);
+    const p = pitchers[nombre];
+
+    // Si tiene juegos registrados, buscar y restar exactamente
+    if (Array.isArray(p.juegos) && p.juegos.length) {
+      const idx = p.juegos.findIndex(j => j.fecha === fecha && j.partido === partidoStr);
+      if (idx !== -1) {
+        const j = p.juegos[idx];
+        p.totalH  = Math.max(0, (p.totalH  || 0) - (j.H  || 0));
+        p.totalHR = Math.max(0, (p.totalHR || 0) - (j.HR || 0));
+        p.totalBB = Math.max(0, (p.totalBB || 0) - (j.BB || 0));
+        p.totalK  = Math.max(0, (p.totalK  || 0) - (j.K  || 0));
+        p.totalO  = Math.max(0, (p.totalO  || 0) - (j.O  || 0));
+        p.totalER = Math.max(0, (p.totalER || 0) - (j.ER || 0));
+        p.juegos.splice(idx, 1);
+        return;
+      }
+    }
+
+    // Fallback: restar proporcionalmente por outs lanzados en este partido
+    // No podemos saber exactamente qué stats corresponden, así que solo restamos los outs
+    p.totalO = Math.max(0, (p.totalO || 0) - (outs || 0));
   });
 }
 
@@ -1589,17 +1806,44 @@ function guardarPartido() {
     stats.forEach((v, i) => players[nombre].total[i] += v);
   });
 
-  // Acumular pitcheo
+  // Calcular marcador final desde carrerasGrid
+  const cV = Object.values(carrerasGrid.visitante).reduce((s,v) => s+v, 0);
+  const cL = Object.values(carrerasGrid.local).reduce((s,v) => s+v, 0);
+  const ganador = cV > cL ? "visitante" : cL > cV ? "local" : "empate";
+
+  // Acumular pitcheo + asignar W/L
   distribuirStatsPitcheo(bateadoresVisit, pitVsVisitFinal, fecha, partidoStr);
   distribuirStatsPitcheo(bateadoresLocal, pitVsLocalFinal, fecha, partidoStr);
 
-  // Construir objeto partido
+  // W/L: pitcher ganador = el del equipo ganador con más outs
+  // El pitcher del equipo LOCAL enfrenta al visitante (pitVsVisit) y viceversa
+  function asignarWL(pitArr, equipoPitcher, esGanador) {
+    if (!pitArr.length) return;
+    // El pitcher con más outs del equipo
+    const ganadorPit = pitArr.reduce((a, b) => (a.outs || 0) >= (b.outs || 0) ? a : b);
+    if (!pitchers[ganadorPit.nombre]) return;
+    if (esGanador) {
+      pitchers[ganadorPit.nombre].victorias = (pitchers[ganadorPit.nombre].victorias || 0) + 1;
+    } else {
+      pitchers[ganadorPit.nombre].derrotas = (pitchers[ganadorPit.nombre].derrotas || 0) + 1;
+    }
+  }
+
+  if (ganador !== "empate") {
+    // pitVsVisitFinal = pitcher(s) LOCAL(es) — ganan si local gana
+    asignarWL(pitVsVisitFinal, "local",     ganador === "local");
+    // pitVsLocalFinal = pitcher(s) VISITANTE(s) — ganan si visitante gana
+    asignarWL(pitVsLocalFinal, "visitante", ganador === "visitante");
+  }
+
+  // Construir objeto partido con marcador
   const partido = {
     fecha: fechaHora, local: localNom, visitante: visitNom,
     jugadores: todosJugadores,
     jugVisitante: bateadoresVisit,
     jugLocal: bateadoresLocal,
-    pitVsVisit: pitVsVisitFinal, pitVsLocal: pitVsLocalFinal
+    pitVsVisit: pitVsVisitFinal, pitVsLocal: pitVsLocalFinal,
+    carrerasVisitante: cV, carrerasLocal: cL, ganador
   };
 
   if (editandoIdx >= 0) {
@@ -1632,6 +1876,7 @@ function editarPartido(idx) {
     `${p.local} vs ${p.visitante} · ${p.fecha}`;
   document.getElementById("btnGuardar").textContent = "💾 Actualizar Partido";
   document.getElementById("btnGuardar").style.display = "block";
+  document.getElementById("btnNuevoPartido").style.display = "block";
   document.getElementById("btnIniciarJuego").style.display = "none";
 
   // Rellenar campos
@@ -1652,6 +1897,13 @@ function editarPartido(idx) {
       stats.map(v => `<td class="stat">${v}</td>`).join("") +
       `<td class="stat-av td-ave">.000</td>` +
       `<td class="stat-av td-ops">.000</td>` +
+      `<td class="td-inn" data-inn="1"></td>` +
+      `<td class="td-inn" data-inn="2"></td>` +
+      `<td class="td-inn" data-inn="3"></td>` +
+      `<td class="td-inn" data-inn="4"></td>` +
+      `<td class="td-inn" data-inn="5"></td>` +
+      `<td class="td-inn td-inn-extra" data-inn="6"></td>` +
+      `<td class="td-inn td-inn-extra" data-inn="7"></td>` +
       `<td class="td-acciones"><button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button><button onclick="this.closest('tr').remove()">✕</button></td>`;
     document.querySelector("#tablaVisitante tbody").appendChild(tr);
   });
@@ -1663,6 +1915,13 @@ function editarPartido(idx) {
       stats.map(v => `<td class="stat">${v}</td>`).join("") +
       `<td class="stat-av td-ave">.000</td>` +
       `<td class="stat-av td-ops">.000</td>` +
+      `<td class="td-inn" data-inn="1"></td>` +
+      `<td class="td-inn" data-inn="2"></td>` +
+      `<td class="td-inn" data-inn="3"></td>` +
+      `<td class="td-inn" data-inn="4"></td>` +
+      `<td class="td-inn" data-inn="5"></td>` +
+      `<td class="td-inn td-inn-extra" data-inn="6"></td>` +
+      `<td class="td-inn td-inn-extra" data-inn="7"></td>` +
       `<td class="td-acciones"><button class="btn-sustituir" title="Sustituir" onclick="abrirModalSustituir(this)">⇄</button><button onclick="this.closest('tr').remove()">✕</button></td>`;
     document.querySelector("#tablaLocal tbody").appendChild(tr);
   });
@@ -1723,6 +1982,7 @@ function cancelarEdicion() {
   document.getElementById("editandoBanner").style.display = "none";
   document.getElementById("btnGuardar").textContent = "💾 Guardar Partido";
   document.getElementById("btnGuardar").style.display = "none";
+  const _nb = document.getElementById("btnNuevoPartido"); if (_nb) _nb.style.display = "none";
   document.getElementById("btnIniciarJuego").style.display = "block";
 }
 
@@ -1743,6 +2003,7 @@ function resetJuego() {
   jugadorNombre = null;
   tablaActiva = null;
   historialJugadas = [];
+  inningLog = [];
   resetMarcador();
   fasePartido = "normal";
   derbyState  = null;
@@ -1750,14 +2011,16 @@ function resetJuego() {
   const jA = document.getElementById("jugadorActivo");
   jA.textContent = "👆 Ningún jugador seleccionado";
   jA.classList.remove("activo-global");
-  document.getElementById("local").value = "";
-  document.getElementById("visitante").value = "";
-  document.getElementById("fecha").value = "";
+  const localEl = document.getElementById("local");
+  const visitEl = document.getElementById("visitante");
+  if (localEl) localEl.value = "";
+  if (visitEl) visitEl.value = "";
   const horaEl = document.getElementById("hora");
   if (horaEl) horaEl.value = "";
   document.getElementById("editandoBanner").style.display = "none";
   document.getElementById("btnGuardar").textContent = "💾 Guardar Partido";
   document.getElementById("btnGuardar").style.display = "none";
+  const _nb = document.getElementById("btnNuevoPartido"); if (_nb) _nb.style.display = "none";
   document.getElementById("btnIniciarJuego").style.display = "block";
   editandoIdx = -1;
 }
@@ -1791,6 +2054,16 @@ function cargarSelects() {
     const ph = id === "selectLocal" ? "+ Agregar jugador local" : "+ Agregar jugador visitante";
     sel.innerHTML = `<option value="">${ph}</option>`;
     nombres.forEach(n => sel.innerHTML += `<option value="${n}">${n}</option>`);
+  });
+
+  // Capitanes — misma lista de jugadores
+  ["local","visitante"].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel || sel.tagName !== "SELECT") return;
+    const val = sel.value;
+    const ph  = id === "local" ? "🏠 Capitán Local..." : "🛫 Capitán Visitante...";
+    sel.innerHTML = `<option value="">${ph}</option>`;
+    nombres.forEach(n => sel.innerHTML += `<option value="${n}" ${n===val?"selected":""}>${n}</option>`);
   });
   // Actualizar selects de pitcher dinámicos existentes
   document.querySelectorAll(".pitcher-select").forEach(sel => {
@@ -1879,7 +2152,22 @@ function cargarStatsBateo() {
     div.innerHTML = "<p class='empty-msg'>Sin jugadores aún</p>"; return;
   }
 
-  // Tabla comparativa
+  // Calcular G y P por jugador desde partidos
+  const recordJugador = {}; // { nombre: { G, P } }
+  partidos.forEach(p => {
+    if (!p.ganador || p.ganador === "empate") return;
+    const ganaronVisit = p.ganador === "visitante";
+    const ganaronLocal = p.ganador === "local";
+    (p.jugVisitante || []).forEach(j => {
+      if (!recordJugador[j.nombre]) recordJugador[j.nombre] = { G: 0, P: 0 };
+      ganaronVisit ? recordJugador[j.nombre].G++ : recordJugador[j.nombre].P++;
+    });
+    (p.jugLocal || []).forEach(j => {
+      if (!recordJugador[j.nombre]) recordJugador[j.nombre] = { G: 0, P: 0 };
+      ganaronLocal ? recordJugador[j.nombre].G++ : recordJugador[j.nombre].P++;
+    });
+  });
+
   const wrapper = document.createElement("div");
   wrapper.className = "stats-table-wrapper";
   wrapper.innerHTML = `
@@ -1887,6 +2175,9 @@ function cargarStatsBateo() {
       <thead>
         <tr>
           <th>Jugador</th>
+          <th title="Plate Appearances">PA</th>
+          <th title="Juegos Ganados" style="color:#90c878">G</th>
+          <th title="Juegos Perdidos" style="color:#e88">P</th>
           <th>VB</th><th>H</th><th>1B</th><th>2B</th><th>3B</th><th>HR</th>
           <th>BB</th><th>K</th><th>CA</th><th>CI</th>
           <th>AVE</th><th>OBP</th><th>SLG</th><th>OPS</th>
@@ -1899,19 +2190,33 @@ function cargarStatsBateo() {
 
   const tbody = wrapper.querySelector("#tbody-bateo");
 
-  // Ordenar por OPS desc
-  const filas = nombres.map(nombre => {
-    const av = calcularAvanzadas(players[nombre].total);
-    return { nombre, av };
-  }).sort((a,b) => parseFloat(b.av.OPS) - parseFloat(a.av.OPS));
+  const numPartidos = partidos.length || 1;
+  const MIN_PA = Math.max(5, Math.round(1.72 * numPartidos));
 
-  filas.forEach(({ nombre, av }, rank) => {
+  const datos = nombres.map(nombre => {
+    const av = calcularAvanzadas(players[nombre].total);
+    const pa = av.VB + av.BB;
+    const rec = recordJugador[nombre] || { G: 0, P: 0 };
+    return { nombre, av, pa, rec, cumple: pa >= MIN_PA };
+  }).sort((a,b) => {
+    if (a.cumple && !b.cumple) return -1;
+    if (!a.cumple && b.cumple) return 1;
+    return parseFloat(b.av.OPS) - parseFloat(a.av.OPS);
+  });
+
+  let rankIdx = 0;
+  datos.forEach(({ nombre, av, pa, rec, cumple }) => {
     const tr = document.createElement("tr");
+    const rank = cumple ? rankIdx++ : -1;
     tr.className = rank === 0 ? "rank-gold" : rank === 1 ? "rank-silver" : rank === 2 ? "rank-bronze" : "";
+    const paTag = !cumple ? `<span class="pa-insuf" title="Mín. ${MIN_PA} PA (1.72 × ${numPartidos} partidos)">▲</span>` : "";
     tr.innerHTML = `
-      <td class="col-nombre-stats">${nombre}
+      <td class="col-nombre-stats">${paTag}${nombre}
         <button class="btn-eliminar-stat" onclick="eliminarJugadorGlobal('${nombre}')">✕</button>
       </td>
+      <td class="stat-dest">${pa}</td>
+      <td style="color:var(--acento);font-weight:700">${rec.G}</td>
+      <td style="color:var(--marca);font-weight:700">${rec.P}</td>
       <td>${av.VB}</td><td>${av.H}</td><td>${av["1B"]}</td><td>${av["2B"]}</td>
       <td>${av["3B"]}</td><td>${av.HR}</td><td>${av.BB}</td><td>${av.K}</td>
       <td>${av.CA}</td><td>${av.CI}</td>
@@ -1940,6 +2245,7 @@ function cargarStatsPitcheo() {
       <thead>
         <tr>
           <th>Pitcher</th>
+          <th>W</th><th>L</th>
           <th>IP</th><th>H</th><th>HR</th><th>BB</th><th>K</th><th>ER</th>
           <th>ERA</th><th>WHIP</th><th>K/5</th><th>BB/5</th><th>H/5</th><th>HR/5</th><th>K/BB</th>
         </tr>
@@ -1973,27 +2279,35 @@ function cargarStatsPitcheo() {
     return { nombre, p, ...s, cumple: p.totalO >= MIN_OUTS };
   });
 
-  const filas     = todos.filter(f => f.cumple).sort((a,b) => {
+  const filas = todos.sort((a,b) => {
+    if (a.cumple && !b.cumple) return -1;
+    if (!a.cumple && b.cumple) return 1;
     if (a.era==="---") return 1;
     if (b.era==="---") return -1;
     return parseFloat(a.era) - parseFloat(b.era);
   });
-  const excluidos = todos.filter(f => !f.cumple);
 
   if (!filas.length) {
-    div.innerHTML = "<p class='empty-msg'>Ningún pitcher ha lanzado mínimo 5 innings aún.</p>";
+    div.innerHTML = "<p class='empty-msg'>Aún no hay pitcheos.</p>";
     return;
   }
 
-  filas.forEach(({ nombre, p, era, ip, whip, k9, bb9, h9, hr9, kbb }, rank) => {
+  let rankIdx = 0;
+  filas.forEach(({ nombre, p, era, ip, whip, k9, bb9, h9, hr9, kbb, cumple }) => {
+    const rank = cumple ? rankIdx++ : -1;
     const eraNum  = parseFloat(era);
     const whipNum = parseFloat(whip);
     const eraClass  = isNaN(eraNum)  ? "" : eraNum  <= 3.5 ? "era-good" : eraNum  >= 6   ? "era-bad" : "";
     const whipClass = isNaN(whipNum) ? "" : whipNum <= 1.2 ? "era-good" : whipNum >= 1.8 ? "era-bad" : "";
     const tr = document.createElement("tr");
     tr.className = rank === 0 ? "rank-gold" : rank === 1 ? "rank-silver" : rank === 2 ? "rank-bronze" : "";
+    const pitTag = !cumple ? `<span class="pa-insuf" title="Mín. 5 IP para ranking">▲</span>` : "";
+    const w = p.victorias || 0;
+    const l = p.derrotas  || 0;
     tr.innerHTML = `
-      <td class="col-nombre-stats">🥎 ${nombre}</td>
+      <td class="col-nombre-stats">🥎 ${pitTag}${nombre}</td>
+      <td class="stat-dest" style="color:var(--acento)">${w}</td>
+      <td class="stat-dest" style="color:var(--marca)">${l}</td>
       <td>${ip}</td>
       <td>${p.totalH}</td><td>${p.totalHR}</td><td>${p.totalBB}</td>
       <td>${p.totalK}</td><td>${p.totalER}</td>
@@ -2007,15 +2321,6 @@ function cargarStatsPitcheo() {
     `;
     tbody.appendChild(tr);
   });
-
-  // Nota de excluidos
-  if (excluidos.length) {
-    const nota = document.createElement("p");
-    nota.className = "empty-msg";
-    nota.style.cssText = "font-size:11px;padding:10px 14px;text-align:left";
-    nota.innerHTML = `<em>Excluidos por menos de 5 IP: ${excluidos.map(e => `${e.nombre} (${e.ip} IP)`).join(", ")}</em>`;
-    wrapper.appendChild(nota);
-  }
 }
 
 function cargarStatsPartidos() {
@@ -2023,6 +2328,36 @@ function cargarStatsPartidos() {
   div.innerHTML = "";
   if (!partidos.length) {
     div.innerHTML = "<p class='empty-msg'>Sin partidos guardados aún</p>"; return;
+  }
+
+  // Resumen W/L por equipo — solo mostrar equipos con al menos 1 partido con resultado
+  const equipos = {};
+  const equipoDisplay = {};
+  partidos.forEach(p => {
+    const normEq = s => s ? s.trim().toLowerCase() : "";
+    const keyV = normEq(p.visitante), keyL = normEq(p.local);
+    if (!p.ganador || p.ganador === "empate") return; // ignorar empates y sin resultado
+
+    // Solo agregar equipos que tienen partidos con resultado (G o P)
+    if (keyV && !equipos[keyV]) { equipos[keyV] = { W:0, L:0 }; equipoDisplay[keyV] = p.visitante?.trim(); }
+    if (keyL && !equipos[keyL]) { equipos[keyL] = { W:0, L:0 }; equipoDisplay[keyL] = p.local?.trim(); }
+
+    if (p.ganador === "visitante") { equipos[keyV].W++; if (equipos[keyL]) equipos[keyL].L++; }
+    else { if (equipos[keyL]) equipos[keyL].W++; equipos[keyV].L++; }
+  });
+
+  if (Object.keys(equipos).length) {
+    const resumen = document.createElement("div");
+    resumen.className = "equipo-resumen";
+    resumen.innerHTML = `<div class="equipo-resumen-titulo">🏆 Record por equipo (capitán)</div>` +
+      Object.entries(equipos).sort((a,b) => b[1].W - a[1].W)
+        .map(([key,r]) => `<div class="equipo-resumen-fila">
+          <span class="equipo-nombre">${equipoDisplay[key] || key}</span>
+          <span class="equipo-w">${r.W}G</span>
+          <span class="equipo-sep">—</span>
+          <span class="equipo-l">${r.L}P</span>
+        </div>`).join("");
+    div.appendChild(resumen);
   }
 
   [...partidos].reverse().forEach((p, revIdx) => {
@@ -2034,39 +2369,71 @@ function cargarStatsPartidos() {
 
     const card = document.createElement("div");
     card.className = "partido-card";
+    const cV = p.carrerasVisitante ?? "?";
+    const cL = p.carrerasLocal ?? "?";
+    const ganadorLabel = p.ganador === "visitante"
+      ? `🏆 ${p.visitante}`
+      : p.ganador === "local"
+      ? `🏆 ${p.local}`
+      : "";
+
     card.innerHTML = `
-      <div class="partido-titulo">⚾ ${p.local} vs ${p.visitante}</div>
+      <div class="partido-titulo">⚾ ${p.visitante} <span class="partido-score">${cV} — ${cL}</span> ${p.local}</div>
+      ${ganadorLabel ? `<div class="partido-ganador">${ganadorLabel}</div>` : ""}
       <div class="partido-fecha">📅 ${p.fecha} · ${p.jugadores?.length||0} jugadores</div>
       ${pitInfo ? `<div class="partido-pit">${pitInfo}</div>` : ""}
       <div class="partido-acciones">
-        <button class="btn-editar-partido" onclick="editarPartido(${realIdx})">✏️ Editar</button>
-        <button class="btn-eliminar-partido" onclick="eliminarPartido(${realIdx})">🗑 Eliminar</button>
+        <button class="btn-eliminar-partido">🗑 Eliminar</button>
       </div>
     `;
+    card.querySelector(".btn-eliminar-partido").addEventListener("click", () => eliminarPartido(realIdx));
     div.appendChild(card);
   });
 }
 
+// Modal de confirmación propio (evita bloqueo de window.confirm en Safari/WebView)
+function confirmar(titulo, mensaje, onOk) {
+  const modal = document.getElementById("modalConfirm");
+  document.getElementById("modalConfirmTitulo").textContent = titulo;
+  document.getElementById("modalConfirmMsg").textContent    = mensaje;
+  modal.style.display = "flex";
+  const btnOk     = document.getElementById("modalConfirmOk");
+  const btnCancel = document.getElementById("modalConfirmCancel");
+  const cerrar = () => { modal.style.display = "none"; btnOk.onclick = null; btnCancel.onclick = null; };
+  btnOk.onclick     = () => { cerrar(); onOk(); };
+  btnCancel.onclick = () => cerrar();
+}
+
+function revertirWL(pitArr, esGanador) {
+  if (!pitArr?.length) return;
+  const ganadorPit = pitArr.reduce((a,b) => (a.outs||0) >= (b.outs||0) ? a : b);
+  if (!pitchers[ganadorPit.nombre]) return;
+  if (esGanador) pitchers[ganadorPit.nombre].victorias = Math.max(0, (pitchers[ganadorPit.nombre].victorias||0) - 1);
+  else           pitchers[ganadorPit.nombre].derrotas  = Math.max(0, (pitchers[ganadorPit.nombre].derrotas||0)  - 1);
+}
+
 function eliminarPartido(idx) {
   const p = partidos[idx];
-  if (!confirm(`¿Eliminar el partido "${p.local} vs ${p.visitante}" del ${p.fecha}?\nEstas acción revertirá todas las estadísticas de ese partido.`)) return;
-
-  const partidoStr = `${p.local} vs ${p.visitante}`;
-
-  // Revertir stats de bateo
-  restarStatsJugadorPartido(p.jugadores || [], p.fecha);
-
-  // Revertir stats de pitcheo
-  if (p.pitVsVisit) restarStatsPitcherPartido(p.pitVsVisit, p.fecha, partidoStr);
-  if (p.pitVsLocal) restarStatsPitcherPartido(p.pitVsLocal, p.fecha, partidoStr);
-
-  // Eliminar el partido
-  partidos.splice(idx, 1);
-  guardarStorage();
-  cargarStatsPartidos();
-  cargarStatsBateo();
-  cargarStatsPitcheo();
-  toast(`🗑 Partido eliminado y estadísticas revertidas`);
+  confirmar(
+    "🗑 Eliminar partido",
+    `${p.visitante} vs ${p.local} — ${p.fecha}\nSe revertirán todas las estadísticas.`,
+    () => {
+      const partidoStr = `${p.local} vs ${p.visitante}`;
+      if (p.ganador && p.ganador !== "empate") {
+        revertirWL(p.pitVsVisit, p.ganador === "local");
+        revertirWL(p.pitVsLocal, p.ganador === "visitante");
+      }
+      restarStatsJugadorPartido(p.jugadores || [], p.fecha);
+      if (p.pitVsVisit) restarStatsPitcherPartido(p.pitVsVisit, p.fecha, partidoStr);
+      if (p.pitVsLocal) restarStatsPitcherPartido(p.pitVsLocal, p.fecha, partidoStr);
+      partidos.splice(idx, 1);
+      guardarStorage();
+      cargarStatsPartidos();
+      cargarStatsBateo();
+      cargarStatsPitcheo();
+      toast(`🗑 Partido eliminado`);
+    }
+  );
 }
 
 // ============================================================
@@ -2101,17 +2468,26 @@ function descargarPDF(tipo) {
   let headers = "";
 
   if (tipo === "bateo") {
-    headers = `<tr><th>Jugador</th><th>VB</th><th>H</th><th>1B</th><th>2B</th><th>3B</th><th>HR</th><th>BB</th><th>K</th><th>CA</th><th>CI</th><th>AVE</th><th>OBP</th><th>SLG</th><th>OPS</th></tr>`;
+    headers = `<tr><th>Jugador</th><th>PA</th><th>G</th><th>P</th><th>VB</th><th>H</th><th>1B</th><th>2B</th><th>3B</th><th>HR</th><th>BB</th><th>K</th><th>CA</th><th>CI</th><th>AVE</th><th>OBP</th><th>SLG</th><th>OPS</th></tr>`;
+    const recJug = {};
+    partidos.forEach(p => {
+      if (!p.ganador || p.ganador === "empate") return;
+      const gV = p.ganador === "visitante", gL = p.ganador === "local";
+      (p.jugVisitante||[]).forEach(j => { if (!recJug[j.nombre]) recJug[j.nombre]={G:0,P:0}; gV?recJug[j.nombre].G++:recJug[j.nombre].P++; });
+      (p.jugLocal||[]).forEach(j => { if (!recJug[j.nombre]) recJug[j.nombre]={G:0,P:0}; gL?recJug[j.nombre].G++:recJug[j.nombre].P++; });
+    });
     const datos = nombres.map(n => {
       const av = calcularAvanzadas(players[n].total);
-      return { nombre: n, av, ops: parseFloat(av.OPS) };
+      const pa = av.VB + av.BB;
+      const rec = recJug[n] || {G:0,P:0};
+      return { nombre: n, av, pa, rec, ops: parseFloat(av.OPS) };
     }).sort((a,b) => b.ops - a.ops);
-    filas = datos.map(({ nombre, av }) =>
-      `<tr><td>${nombre}</td><td>${av.VB}</td><td>${av.H}</td><td>${av["1B"]}</td><td>${av["2B"]}</td><td>${av["3B"]}</td><td>${av.HR}</td><td>${av.BB}</td><td>${av.K}</td><td>${av.CA}</td><td>${av.CI}</td><td>${av.AVE}</td><td>${av.OBP}</td><td>${av.SLG}</td><td class="hi">${av.OPS}</td></tr>`
+    filas = datos.map(({ nombre, av, pa, rec }) =>
+      `<tr><td>${nombre}</td><td>${pa}</td><td style="color:green;font-weight:bold">${rec.G}</td><td style="color:red;font-weight:bold">${rec.P}</td><td>${av.VB}</td><td>${av.H}</td><td>${av["1B"]}</td><td>${av["2B"]}</td><td>${av["3B"]}</td><td>${av.HR}</td><td>${av.BB}</td><td>${av.K}</td><td>${av.CA}</td><td>${av.CI}</td><td>${av.AVE}</td><td>${av.OBP}</td><td>${av.SLG}</td><td class="hi">${av.OPS}</td></tr>`
     ).join("");
   } else {
+    headers = `<tr><th>Pitcher</th><th>W</th><th>L</th><th>IP</th><th>H</th><th>HR</th><th>BB</th><th>K</th><th>ER</th><th>ERA</th><th>WHIP</th><th>K/5</th><th>BB/5</th><th>K/BB</th></tr>`;
     const MIN_OUTS_PDF = 15;
-    headers = `<tr><th>Pitcher</th><th>IP</th><th>H</th><th>HR</th><th>BB</th><th>K</th><th>ER</th><th>ERA</th><th>WHIP</th><th>K/5</th><th>BB/5</th><th>K/BB</th></tr>`;
     const datos = nombres.map(n => {
       const p   = pitchers[n];
       const ip9 = p.totalO ? p.totalO/3 : 0;
@@ -2122,11 +2498,13 @@ function descargarPDF(tipo) {
       const k9   = ip9 ? ((p.totalK/ip9)*BASE).toFixed(1) : "---";
       const bb9  = ip9 ? ((p.totalBB/ip9)*BASE).toFixed(1) : "---";
       const kbb  = p.totalBB ? (p.totalK/p.totalBB).toFixed(2) : "---";
-      return { nombre: n, p, era, ip, whip, k9, bb9, kbb, eraNum: parseFloat(era) || 999 };
+      const w    = p.victorias || 0;
+      const l    = p.derrotas  || 0;
+      return { nombre: n, p, era, ip, whip, k9, bb9, kbb, w, l, eraNum: parseFloat(era) || 999 };
     }).filter(d => pitchers[d.nombre].totalO >= MIN_OUTS_PDF)
       .sort((a,b) => a.eraNum - b.eraNum);
-    filas = datos.map(({ nombre, p, era, ip, whip, k9, bb9, kbb }) =>
-      `<tr><td>${nombre}</td><td>${ip}</td><td>${p.totalH}</td><td>${p.totalHR}</td><td>${p.totalBB}</td><td>${p.totalK}</td><td>${p.totalER}</td><td class="hi">${era}</td><td>${whip}</td><td>${k9}</td><td>${bb9}</td><td>${kbb}</td></tr>`
+    filas = datos.map(({ nombre, p, era, ip, whip, k9, bb9, kbb, w, l }) =>
+      `<tr><td>${nombre}</td><td style="color:green;font-weight:bold">${w}</td><td style="color:red;font-weight:bold">${l}</td><td>${ip}</td><td>${p.totalH}</td><td>${p.totalHR}</td><td>${p.totalBB}</td><td>${p.totalK}</td><td>${p.totalER}</td><td class="hi">${era}</td><td>${whip}</td><td>${k9}</td><td>${bb9}</td><td>${kbb}</td></tr>`
     ).join("");
   }
 
@@ -2209,10 +2587,11 @@ function resetearTodo() {
 // Jugadores iniciales — solo se agregan si la base está vacía
 const JUGADORES_INICIALES = [
   "ANTHONY","DANIEL","EDEL ESTRADA","EMERIO","FERNANDO",
-  "FIDEL ERNESTO","FRANCISCO PALAY","GONZALO","GUSTAVO JR.","GUSTAVO URIBE",
-  "JULIO CALERO","JUSTIN","LUIS","MARIO LAO","MARLON BASANTA",
-  "MIGUEL RODRIGUEZ","MIGUELITO","PEPITO PEREZ","PEPO PEREZ","REY",
-  "RICARDO LEON","ROMIL BENITO","RUDY MARTIN","WILFREDO CALZADILLA","YANNI"
+  "FIDEL RODRIGUEZ","FRANCISCO PALAY","GABRIEL DELGADO","GONZALO","GUSTAVO JR.",
+  "GUSTAVO LISBOA","GUSTAVO URIBE","JULIO CALERO","JUSTIN","LUIS GARCIA",
+  "MARIO LAO","MARLON BASANTA","MIGUEL GARCIA","MIGUEL RODRIGUEZ","MIGUELITO",
+  "PEPITO PEREZ","PEPO PEREZ","REY","RICARDO LEON","ROMIL BENITO",
+  "RUDY MARTIN","WILFREDO CALZADILLA","YANNI"
 ];
 
 if (Object.keys(players).length === 0) {

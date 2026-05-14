@@ -43,8 +43,12 @@
 
   <div class="seccion-titulo">📋 Datos del Partido</div>
   <div class="info">
-    <input id="local" placeholder="Equipo Local" autocomplete="off">
-    <input id="visitante" placeholder="Equipo Visitante" autocomplete="off">
+    <select id="visitante" onchange="actualizarMarcadorUI()">
+      <option value="">🛫 Capitán Visitante...</option>
+    </select>
+    <select id="local" onchange="actualizarMarcadorUI()">
+      <option value="">🏠 Capitán Local...</option>
+    </select>
     <div class="info-fecha-hora">
       <input type="date" id="fecha" style="flex:2">
       <input type="time" id="hora" style="flex:1">
@@ -175,19 +179,27 @@
     <table class="game-table" id="tablaVisitante">
       <colgroup>
         <col class="col-j">
-        <col><col><col><col><col><col><col><col><col>
+        <col class="col-inn"><col class="col-inn"><col class="col-inn"><col class="col-inn"><col class="col-inn">
+        <col class="col-inn col-inn-extra"><col class="col-inn col-inn-extra">
         <col class="col-av"><col class="col-av">
         <col class="col-x">
       </colgroup>
       <thead><tr>
         <th>Jugador</th>
-        <th>1B</th><th>2B</th><th>3B</th><th>HR</th>
-        <th>BB</th><th>K</th><th>O</th><th>CA</th><th>CI</th>
+        <th class="th-inn">E1</th><th class="th-inn">E2</th><th class="th-inn">E3</th>
+        <th class="th-inn">E4</th><th class="th-inn">E5</th>
+        <th class="th-inn th-inn-extra">E6</th><th class="th-inn th-inn-extra">E7</th>
         <th class="th-av">AVE</th><th class="th-av">OPS</th>
-        <th>✕</th>
+        <th></th>
       </tr></thead>
       <tbody></tbody>
     </table>
+  </div>
+
+  <!-- LEYENDA -->
+  <div class="leyenda-jugadas">
+    <span>1=1B</span><span>2=2B</span><span>3=3B</span><span>⬟=HR</span>
+    <span>B=BB</span><span>K=K</span><span>O=O</span><span>✦=CA</span><span>◆=CI</span>
   </div>
 
   <!-- LOCAL -->
@@ -200,19 +212,26 @@
     <table class="game-table" id="tablaLocal">
       <colgroup>
         <col class="col-j">
-        <col><col><col><col><col><col><col><col><col>
+        <col class="col-inn"><col class="col-inn"><col class="col-inn"><col class="col-inn"><col class="col-inn">
+        <col class="col-inn col-inn-extra"><col class="col-inn col-inn-extra">
         <col class="col-av"><col class="col-av">
         <col class="col-x">
       </colgroup>
       <thead><tr>
         <th>Jugador</th>
-        <th>1B</th><th>2B</th><th>3B</th><th>HR</th>
-        <th>BB</th><th>K</th><th>O</th><th>CA</th><th>CI</th>
+        <th class="th-inn">E1</th><th class="th-inn">E2</th><th class="th-inn">E3</th>
+        <th class="th-inn">E4</th><th class="th-inn">E5</th>
+        <th class="th-inn th-inn-extra">E6</th><th class="th-inn th-inn-extra">E7</th>
         <th class="th-av">AVE</th><th class="th-av">OPS</th>
-        <th>✕</th>
+        <th></th>
       </tr></thead>
       <tbody></tbody>
     </table>
+  </div>
+
+  <div class="leyenda-jugadas">
+    <span>1=1B</span><span>2=2B</span><span>3=3B</span><span>⬟=HR</span>
+    <span>B=BB</span><span>K=K</span><span>O=O</span><span>✦=CA</span><span>◆=CI</span>
   </div>
 
   <div class="controles-juego">
@@ -229,6 +248,7 @@
     <button class="btn-siguiente" onclick="siguienteBateador()">➡️ Siguiente bateador</button>
     <button class="iniciar" id="btnIniciarJuego" onclick="iniciarJuego()">⚾ Iniciar Juego</button>
     <button class="guardar" id="btnGuardar" onclick="guardarPartido()" style="display:none">💾 Guardar Partido</button>
+    <button class="btn-nuevo-partido" id="btnNuevoPartido" onclick="nuevoPartidoSinGuardar()" style="display:none">🗑 Nuevo Partido</button>
   </div>
 
 </div>
@@ -308,6 +328,16 @@
     <p>1. Presiona <strong>Exportar JSON</strong> para descargar el respaldo.</p>
     <p>2. En Safari, usa el ícono de compartir → <strong>Guardar en Archivos</strong> → iCloud Drive o Dropbox.</p>
     <p>3. Para restaurar, presiona <strong>Importar respaldo</strong> y selecciona el archivo.</p>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMACIÓN -->
+<div id="modalConfirm" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="text-align:center">
+    <div class="modal-titulo" id="modalConfirmTitulo"></div>
+    <p id="modalConfirmMsg" style="font-size:13px;color:var(--suave);margin:8px 0 20px"></p>
+    <button class="modal-ok" id="modalConfirmOk" style="margin-bottom:8px">Confirmar</button>
+    <button class="modal-btn-cerrar" id="modalConfirmCancel">Cancelar</button>
   </div>
 </div>
 
