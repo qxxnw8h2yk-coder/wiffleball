@@ -492,7 +492,7 @@ function iniciarJuego() {
     return toast("⚠️ Designa el pitcher del equipo VISITANTE (lanza vs Local)");
 
   lineupPos = { visitante: 0, local: 0 };
-  marcador = { inning: 1, outs: 0, turno: "visitante", ultimoOut: null };
+  marcador = { inning: 1, outs: 0, turno: "visitante", ultimoOut: null, ultimoOutPorEquipo: {} };
   actualizarMarcadorUI();
   actualizarBasesUI();
 
@@ -605,17 +605,24 @@ function cambiarOuts(delta) {
   actualizarMarcadorUI();
 
   if (marcador.outs === 3) {
-    const equipoSale = marcador.turno;
-    const tablaIdSale = equipoSale === "visitante" ? "#tablaVisitante" : "#tablaLocal";
-    const filasSale = [...document.querySelectorAll(`${tablaIdSale} tbody tr[data-nombre]`)];
+    const equipoSale    = marcador.turno;
+    const tablaIdSale   = equipoSale === "visitante" ? "#tablaVisitante" : "#tablaLocal";
+    const filasSale     = [...document.querySelectorAll(`${tablaIdSale} tbody tr[data-nombre]`)];
+
+    // Capturar síncronamente ANTES del setTimeout
+    const nombreOut = jugadorNombre || jugadorSeleccionado?.dataset?.nombre || "";
+    const tablaOut  = tablaActiva   || tablaIdSale;
+
     if (filasSale.length && jugadorSeleccionado) {
       const idxActual = filasSale.indexOf(jugadorSeleccionado);
-      // Guardar el siguiente bateador (el que abre el próximo inning de este equipo)
       if (idxActual >= 0) lineupPos[equipoSale] = (idxActual + 1) % filasSale.length;
     }
 
-    // El equipo contrario mantiene su posición actual intacta — NO se toca lineupPos del otro equipo
-    marcador.ultimoOut = { nombre: jugadorNombre, tablaId: tablaActiva };
+    // Guardar el último out de ESTE equipo para la regla chiller
+    if (!marcador.ultimoOutPorEquipo) marcador.ultimoOutPorEquipo = {};
+    if (nombreOut) {
+      marcador.ultimoOutPorEquipo[equipoSale] = { nombre: nombreOut, tablaId: tablaOut };
+    }
 
     setTimeout(() => {
       marcador.outs = 0;
@@ -625,12 +632,18 @@ function cambiarOuts(delta) {
 
       if (!eraTurnoLocal) {
         // Terminó la media entrada del visitante → turno del local
-        // ERROR 1 FIX: verificar si el local puede ganar en la parte baja
-        // (solo aplica en entradas ≥5 donde el visitante va perdiendo)
         marcador.turno = "local";
-        actualizarMarcadorUI();
-        actualizarBasesUI();
-        cambiarEquipoBateador(marcador.turno);
+        // En innings extras, el local también arranca con corredor en 2B
+        if (fasePartido === "extra") {
+          actualizarMarcadorUI();
+          actualizarBasesUI();
+          activarReglaChiller();
+          cambiarEquipoBateador(marcador.turno);
+        } else {
+          actualizarMarcadorUI();
+          actualizarBasesUI();
+          cambiarEquipoBateador(marcador.turno);
+        }
       } else {
         // Terminó la entrada completa
         // ERROR 1 FIX: verificar ANTES de incrementar el inning
@@ -670,11 +683,10 @@ function totalesCarreras() {
 }
 
 function verificarTerminoEntrada() {
-  // Se llama AL TERMINAR la entrada completa (local hizo 3 outs)
-  // marcador.inning aún tiene el número de la entrada que ACABA de terminar
   const { cV, cL } = totalesCarreras();
   const inn = marcador.inning; // entrada que acaba de terminar
 
+  // Al terminar el 5to inning
   if (inn === 5 && fasePartido === "normal") {
     if (cV !== cL) {
       mostrarGanador(cV > cL ? "VISITANTE" : "LOCAL", cV, cL, "5° inning");
@@ -682,13 +694,24 @@ function verificarTerminoEntrada() {
     } else {
       fasePartido = "extra";
       toast("⚾ Empate al 5° inning — 2 innings extras con regla chiller", 4000);
-      return "chiller";
+      return "chiller"; // activa chiller para el 6to
     }
   }
 
+  // Al terminar el 6to inning (extra 1)
+  if (inn === 6 && fasePartido === "extra") {
+    if (cV !== cL) {
+      mostrarGanador(cV > cL ? "VISITANTE" : "LOCAL", cV, cL, "6° inning");
+      return "fin";
+    } else {
+      return "chiller"; // activa chiller para el 7mo
+    }
+  }
+
+  // Al terminar el 7mo inning (extra 2)
   if (inn === 7 && fasePartido === "extra") {
     if (cV !== cL) {
-      mostrarGanador(cV > cL ? "VISITANTE" : "LOCAL", cV, cL, "innings extras");
+      mostrarGanador(cV > cL ? "VISITANTE" : "LOCAL", cV, cL, "7° inning");
       return "fin";
     } else {
       fasePartido = "derby";
@@ -724,14 +747,21 @@ function cerrarFinPartido(guardar) {
 // REGLA CHILLER — último out pasa a 2B al inicio del inning
 // ============================================================
 function activarReglaChiller() {
-  if (!marcador.ultimoOut?.nombre) return;
-  const { nombre, tablaId } = marcador.ultimoOut;
-  const fila = [...document.querySelectorAll(`${tablaId} tbody tr`)]
-    .find(tr => tr.children[0].textContent === nombre);
-  if (!fila) return;
+  const equipo = marcador.turno; // equipo que va a batear ahora
+  const ultimoOut = marcador.ultimoOutPorEquipo?.[equipo];
 
-  // Poner al jugador en 2B
-  bases[2] = { nombre, fila };
+  if (!ultimoOut?.nombre) {
+    toast("⚾ Inning extra — regla chiller activa", 3000);
+    return;
+  }
+
+  const { nombre } = ultimoOut;
+  // Buscar en la tabla del equipo que batea (mismo equipo que hizo el out antes)
+  const tablaEquipo = equipo === "visitante" ? "#tablaVisitante" : "#tablaLocal";
+  const fila = [...document.querySelectorAll(`${tablaEquipo} tbody tr[data-nombre]`)]
+    .find(tr => tr.dataset.nombre === nombre);
+
+  bases[2] = { nombre, fila: fila || null };
   actualizarBasesUI();
   toast(`⚾ Regla chiller: ${nombre} inicia en 2B`, 3500);
 }
@@ -741,24 +771,39 @@ function activarReglaChiller() {
 // 3 bateadores por equipo, 3 swings c/u → más HR total gana
 // ============================================================
 function iniciarDerby() {
-  derbyState = {
-    ronda:        1,
-    turno:        "visitante",  // visitante batea primero
-    bateadorIdx:  0,            // 0,1,2 (3 bateadores)
-    swingsRestantes: 3,
-    hrVisitante:  0,
-    hrLocal:      0,
-    rondaHRVisit: 0,
-    rondaHRLocal: 0,
-    bateadoresVisit: [],        // se llenarán al abrir
-    bateadoresLocal: [],
-  };
+  // Obtener todos los jugadores de cada equipo
+  const jugVisit = [...document.querySelectorAll("#tablaVisitante tbody tr[data-nombre]")]
+    .map(tr => tr.dataset.nombre);
+  const jugLocal = [...document.querySelectorAll("#tablaLocal tbody tr[data-nombre]")]
+    .map(tr => tr.dataset.nombre);
 
-  // Cargar nombres de bateadores desde las tablas
-  derbyState.bateadoresVisit = [...document.querySelectorAll("#tablaVisitante tbody tr")]
-    .slice(0, 3).map(tr => tr.children[0].textContent);
-  derbyState.bateadoresLocal = [...document.querySelectorAll("#tablaLocal tbody tr")]
-    .slice(0, 3).map(tr => tr.children[0].textContent);
+  // Mostrar modal de selección de bateadores antes del derby
+  const modal = document.getElementById("modalSeleccionDerby");
+  const selV   = document.getElementById("derbySelVisit");
+  const selL   = document.getElementById("derbySelLocal");
+
+  selV.innerHTML = jugVisit.map(n => `<option value="${n}">${n}</option>`).join("");
+  selL.innerHTML = jugLocal.map(n => `<option value="${n}">${n}</option>`).join("");
+
+  modal.style.display = "flex";
+}
+
+function confirmarSeleccionDerby() {
+  const selV = document.getElementById("derbySelVisit");
+  const selL = document.getElementById("derbySelLocal");
+  const batV = selV.value;
+  const batL = selL.value;
+
+  document.getElementById("modalSeleccionDerby").style.display = "none";
+
+  derbyState = {
+    ronda: 1, turno: "visitante",
+    bateadorIdx: 0, swingsRestantes: 3,
+    hrVisitante: 0, hrLocal: 0,
+    rondaHRVisit: 0, rondaHRLocal: 0,
+    bateadoresVisit: [batV],
+    bateadoresLocal: [batL],
+  };
 
   document.getElementById("modalDerby").style.display = "flex";
   actualizarDerbyUI();
@@ -773,14 +818,14 @@ function bateadorActualDerby() {
 
 function actualizarDerbyUI() {
   if (!derbyState) return;
-  const totalBateadores = 3;
-  const bateadorNum = derbyState.bateadorIdx + 1;
   const equipoLabel = derbyState.turno === "visitante" ? "🛫 VISITANTE" : "🏠 LOCAL";
-  const nombre = bateadorActualDerby();
+  const nombre = derbyState.turno === "visitante"
+    ? derbyState.bateadoresVisit[0]
+    : derbyState.bateadoresLocal[0];
 
   document.getElementById("derbyRonda").textContent    = `Ronda ${derbyState.ronda}`;
-  document.getElementById("derbyTurno").textContent    = `${equipoLabel} — Bateador ${bateadorNum}/${totalBateadores}`;
-  document.getElementById("derbyBateador").textContent = nombre;
+  document.getElementById("derbyTurno").textContent    = equipoLabel;
+  document.getElementById("derbyBateador").textContent = nombre || "—";
   document.getElementById("derbySwings").textContent   = `Swings restantes: ${derbyState.swingsRestantes}`;
   document.getElementById("derbyHRVis").textContent    = derbyState.rondaHRVisit;
   document.getElementById("derbyHRLoc").textContent    = derbyState.rondaHRLocal;
@@ -810,17 +855,7 @@ function derbyOut() {
 }
 
 function derbySiguienteBateador() {
-  derbyState.bateadorIdx++;
   derbyState.swingsRestantes = 3;
-
-  if (derbyState.bateadorIdx < 3) {
-    // Siguiente bateador del mismo equipo
-    actualizarDerbyUI();
-    return;
-  }
-
-  // Terminó el equipo → cambiar turno o cerrar ronda
-  derbyState.bateadorIdx = 0;
 
   if (derbyState.turno === "visitante") {
     derbyState.turno = "local";
@@ -836,13 +871,14 @@ function derbySiguienteBateador() {
       derbyState  = null;
       fasePartido = "normal";
     } else {
-      // Nueva ronda
+      // Nueva ronda — reseleccionar bateadores
+      document.getElementById("modalDerby").style.display = "none";
+      const modal = document.getElementById("modalSeleccionDerby");
+      document.getElementById("derbyRondaNum").textContent = derbyState.ronda + 1;
+      modal.style.display = "flex";
       derbyState.ronda++;
-      derbyState.turno = "visitante";
       derbyState.rondaHRVisit = 0;
       derbyState.rondaHRLocal = 0;
-      actualizarDerbyUI();
-      toast(`⚾ Empate — Ronda ${derbyState.ronda} del derby`, 2500);
     }
   }
 }
@@ -1289,7 +1325,7 @@ function actualizarHits() {
 function actualizarTotales() { actualizarMarcadorUI(); }
 
 function resetMarcador() {
-  marcador = { inning: 1, outs: 0, turno: "visitante", ultimoOut: null };
+  marcador = { inning: 1, outs: 0, turno: "visitante", ultimoOut: null, ultimoOutPorEquipo: {} };
   bases = { 1: null, 2: null, 3: null };
   lineupPos = { visitante: 0, local: 0 };
   pitcherActivo = { visitante: null, local: null };
