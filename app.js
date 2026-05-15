@@ -2604,15 +2604,23 @@ function descargarPDF(tipo) {
       (p.jugVisitante||[]).forEach(j => { if (!recJug[j.nombre]) recJug[j.nombre]={G:0,P:0}; gV?recJug[j.nombre].G++:recJug[j.nombre].P++; });
       (p.jugLocal||[]).forEach(j => { if (!recJug[j.nombre]) recJug[j.nombre]={G:0,P:0}; gL?recJug[j.nombre].G++:recJug[j.nombre].P++; });
     });
+    const numPartidos = partidos.length || 1;
+    const MIN_PA = Math.max(5, Math.round(1.72 * numPartidos));
     const datos = nombres.map(n => {
       const av = calcularAvanzadas(players[n].total);
       const pa = av.VB + av.BB;
       const rec = recJug[n] || {G:0,P:0};
-      return { nombre: n, av, pa, rec, ops: parseFloat(av.OPS) };
-    }).sort((a,b) => b.ops - a.ops);
-    filas = datos.map(({ nombre, av, pa, rec }) =>
-      `<tr><td>${nombre}</td><td>${pa}</td><td style="color:green;font-weight:bold">${rec.G}</td><td style="color:red;font-weight:bold">${rec.P}</td><td>${av.VB}</td><td>${av.H}</td><td>${av["1B"]}</td><td>${av["2B"]}</td><td>${av["3B"]}</td><td>${av.HR}</td><td>${av.BB}</td><td>${av.K}</td><td>${av.CA}</td><td>${av.CI}</td><td>${av.AVE}</td><td>${av.OBP}</td><td>${av.SLG}</td><td class="hi">${av.OPS}</td></tr>`
-    ).join("");
+      return { nombre: n, av, pa, rec, cumple: pa >= MIN_PA, ops: parseFloat(av.OPS) };
+    }).sort((a,b) => {
+      if (a.cumple && !b.cumple) return -1;
+      if (!a.cumple && b.cumple) return 1;
+      return b.ops - a.ops;
+    });
+    filas = datos.map(({ nombre, av, pa, rec, cumple }) => {
+      const marca = !cumple ? `▲ ` : "";
+      const estilo = !cumple ? `style="color:#aaa"` : "";
+      return `<tr ${estilo}><td>${marca}${nombre}</td><td>${pa}</td><td style="color:green;font-weight:bold">${rec.G}</td><td style="color:red;font-weight:bold">${rec.P}</td><td>${av.VB}</td><td>${av.H}</td><td>${av["1B"]}</td><td>${av["2B"]}</td><td>${av["3B"]}</td><td>${av.HR}</td><td>${av.BB}</td><td>${av.K}</td><td>${av.CA}</td><td>${av.CI}</td><td>${av.AVE}</td><td>${av.OBP}</td><td>${av.SLG}</td><td class="hi">${av.OPS}</td></tr>`;
+    }).join("");
   } else {
     headers = `<tr><th>Pitcher</th><th>W</th><th>L</th><th>IP</th><th>H</th><th>HR</th><th>BB</th><th>K</th><th>ER</th><th>ERA</th><th>WHIP</th><th>K/5</th><th>BB/5</th><th>K/BB</th></tr>`;
     const MIN_OUTS_PDF = 15;
@@ -2628,12 +2636,18 @@ function descargarPDF(tipo) {
       const kbb  = p.totalBB ? (p.totalK/p.totalBB).toFixed(2) : "---";
       const w    = p.victorias || 0;
       const l    = p.derrotas  || 0;
-      return { nombre: n, p, era, ip, whip, k9, bb9, kbb, w, l, eraNum: parseFloat(era) || 999 };
-    }).filter(d => pitchers[d.nombre].totalO >= MIN_OUTS_PDF)
-      .sort((a,b) => a.eraNum - b.eraNum);
-    filas = datos.map(({ nombre, p, era, ip, whip, k9, bb9, kbb, w, l }) =>
-      `<tr><td>${nombre}</td><td style="color:green;font-weight:bold">${w}</td><td style="color:red;font-weight:bold">${l}</td><td>${ip}</td><td>${p.totalH}</td><td>${p.totalHR}</td><td>${p.totalBB}</td><td>${p.totalK}</td><td>${p.totalER}</td><td class="hi">${era}</td><td>${whip}</td><td>${k9}</td><td>${bb9}</td><td>${kbb}</td></tr>`
-    ).join("");
+      const cumple = p.totalO >= MIN_OUTS_PDF;
+      return { nombre: n, p, era, ip, whip, k9, bb9, kbb, w, l, eraNum: parseFloat(era) || 999, cumple };
+    }).sort((a,b) => {
+      if (a.cumple && !b.cumple) return -1;
+      if (!a.cumple && b.cumple) return 1;
+      return a.eraNum - b.eraNum;
+    });
+    filas = datos.map(({ nombre, p, era, ip, whip, k9, bb9, kbb, w, l, cumple }) => {
+      const marca = !cumple ? `▲ ` : "";
+      const estilo = !cumple ? `style="color:#aaa"` : "";
+      return `<tr ${estilo}><td>${marca}${nombre}</td><td style="color:green;font-weight:bold">${w}</td><td style="color:red;font-weight:bold">${l}</td><td>${ip}</td><td>${p.totalH}</td><td>${p.totalHR}</td><td>${p.totalBB}</td><td>${p.totalK}</td><td>${p.totalER}</td><td class="hi">${era}</td><td>${whip}</td><td>${k9}</td><td>${bb9}</td><td>${kbb}</td></tr>`;
+    }).join("");
   }
 
   const titulo = tipo === "bateo" ? "Estadísticas de Bateo" : "Estadísticas de Pitcheo";
@@ -2656,7 +2670,7 @@ function descargarPDF(tipo) {
     <h1>Liga Cubana de Wiffleball Chile · Since 2026</h1>
     <h2>${titulo} · ${fecha}</h2>
     <table><thead>${headers}</thead><tbody>${filas}</tbody></table>
-    <div class="footer">Generado el ${fecha}</div>
+    <div class="footer">▲ No cumple mínimo de PA/IP para el ranking · Generado el ${fecha}</div>
     <script>window.onload = () => { window.print(); }<\/script>
   </body></html>`);
   win.document.close();
