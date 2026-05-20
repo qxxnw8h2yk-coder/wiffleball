@@ -633,6 +633,23 @@ function cambiarOuts(delta) {
       if (!eraTurnoLocal) {
         // Terminó la media entrada del visitante → turno del local
         marcador.turno = "local";
+
+        // Si es el 5to inning (o extra) y el local ya va ganando, termina el partido
+        if (fasePartido === "normal" && marcador.inning === 5) {
+          const { cV, cL } = totalesCarreras();
+          if (cL > cV) {
+            mostrarGanador("LOCAL", cV, cL, "5° inning");
+            return;
+          }
+        }
+        if (fasePartido === "extra" && marcador.inning >= 6) {
+          const { cV, cL } = totalesCarreras();
+          if (cL > cV) {
+            mostrarGanador("LOCAL", cV, cL, `${marcador.inning}° inning`);
+            return;
+          }
+        }
+
         // En innings extras, el local también arranca con corredor en 2B
         if (fasePartido === "extra") {
           actualizarMarcadorUI();
@@ -1305,6 +1322,16 @@ function registrarCarreraEnMarcador(delta) {
   const inn    = marcador.inning;
   carrerasGrid[equipo][inn] = Math.max(0, (carrerasGrid[equipo][inn] || 0) + delta);
   actualizarMarcadorUI();
+
+  // Verificar si el local ganó durante su turno al bate
+  if (equipo === "local" && delta > 0 && fasePartido !== "derby") {
+    const { cV, cL } = totalesCarreras();
+    const esUltimaEntrada = (inn === 5 && fasePartido === "normal") ||
+                            (inn >= 6 && fasePartido === "extra");
+    if (esUltimaEntrada && cL > cV) {
+      setTimeout(() => mostrarGanador("LOCAL", cV, cL, `${inn}° inning`), 600);
+    }
+  }
 }
 
 function actualizarHits() {
